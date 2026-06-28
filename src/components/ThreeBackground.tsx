@@ -120,6 +120,7 @@ export default function ThreeBackground() {
         camera={{ position: [0, 2, 18], fov: 50 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true }}
+        onCreated={({ gl }) => { gl.xr.enabled = false }}
       >
         <Scene />
       </Canvas>
