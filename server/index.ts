@@ -9,6 +9,7 @@ import imagesRoutes from './routes/images'
 import messagesRoutes from './routes/messages'
 import backupsRoutes from './routes/backups'
 import seedRoutes from './routes/seed'
+import blogRoutes from './routes/blog'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -30,6 +31,7 @@ app.use('/api/images', imagesRoutes)
 app.use('/api/messages', messagesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/seed', seedRoutes)
+app.use('/api/blog', blogRoutes)
 
 async function start() {
   try {
@@ -45,4 +47,12 @@ async function start() {
   }
 }
 
-start()
+// Em ambiente Vercel, não usamos app.listen(), exportamos o app
+if (!process.env.VERCEL) {
+  start()
+} else {
+  // Garante que o banco seja inicializado mesmo no Vercel (opcionalmente)
+  initDb(db).catch(console.error)
+}
+
+export default app

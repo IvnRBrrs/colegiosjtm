@@ -78,6 +78,49 @@ export async function fetchMessages() {
   return data
 }
 
+// Blog
+export async function fetchBlogPosts(params: Record<string, string | number> = {}) {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => { if (v) query.set(k, String(v)) })
+  const { data } = await api.get(`/blog/posts?${query}`)
+  return data
+}
+
+export async function fetchBlogPost(id: string) {
+  const { data } = await api.get(`/blog/posts/${id}`)
+  return data
+}
+
+export async function createBlogPost(post: Record<string, any>) {
+  const { data } = await api.post('/blog/posts', post)
+  return data
+}
+
+export async function updateBlogPost(id: string, post: Record<string, any>) {
+  const { data } = await api.put(`/blog/posts/${id}`, post)
+  return data
+}
+
+export async function deleteBlogPost(id: string) {
+  const { data } = await api.delete(`/blog/posts/${id}`)
+  return data
+}
+
+export async function fetchBlogTags() {
+  const { data } = await api.get('/blog/tags')
+  return data
+}
+
+export async function fetchBlogAuthors() {
+  const { data } = await api.get('/blog/authors')
+  return data
+}
+
+export async function fetchBlogArchive() {
+  const { data } = await api.get('/blog/archive')
+  return data
+}
+
 // Auth
 export async function login(username: string, password: string): Promise<string> {
   const { data } = await api.post('/auth/login', { username, password })

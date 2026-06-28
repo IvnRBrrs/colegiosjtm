@@ -8,8 +8,14 @@ const dataDir = join(__dirname, '..', 'data')
 mkdirSync(dataDir, { recursive: true })
 
 export function createDb() {
+  const url = process.env.DATABASE_URL || `file:${join(dataDir, 'cms.db')}`
+  const isTurso = url.startsWith('libsql://')
+
   const db = createClient({
-    url: process.env.DATABASE_URL || `file:${join(dataDir, 'cms.db')}`,
+    url,
+    ...(isTurso && process.env.DATABASE_AUTH_TOKEN
+      ? { authToken: process.env.DATABASE_AUTH_TOKEN }
+      : {}),
   })
 
   return db
@@ -84,6 +90,23 @@ export async function initDb(db: ReturnType<typeof createClient>) {
       phone TEXT,
       message TEXT NOT NULL,
       read INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `)
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS blog_posts (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      subtitle TEXT DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      author TEXT DEFAULT '',
+      date TEXT NOT NULL,
+      tags TEXT DEFAULT '[]',
+      images TEXT DEFAULT '[]',
+      videos TEXT DEFAULT '[]',
+      slug TEXT UNIQUE,
+      published INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     )
   `)

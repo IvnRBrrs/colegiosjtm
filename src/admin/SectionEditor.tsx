@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchContent, bulkUpdateContent } from '../cms/api'
+import { fetchContent, fetchPages, fetchPageContent, bulkUpdateContent, updatePageContent } from '../cms/api'
 import { getModularSection } from '../cms/registry'
 import { AdminProps } from '../cms/types'
 import ImagePickerModal from './ImagePickerModal'
@@ -9,19 +9,51 @@ interface SectionEditorProps {
   onBack: () => void
 }
 
+const STORAGE_KEY = 'cms_selected_page'
+
 export default function SectionEditor({ sectionTitle, onBack }: SectionEditorProps) {
   const mod = getModularSection(sectionTitle)
   const [content, setContent] = useState<Record<string, string>>({})
+  const [pages, setPages] = useState<{ slug: string; title: string }[]>([])
+  const [selectedPage, setSelectedPage] = useState(() => localStorage.getItem(STORAGE_KEY) || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [imagePickerField, setImagePickerField] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchContent().then((data) => {
-      setContent(data)
-    }).catch(() => {})
-  }, [sectionTitle])
+    fetchPages().then(setPages).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const load = selectedPage
+      ? fetchPageContent(selectedPage)
+      : fetchContent()
+    load.then((data) => {
+      const merged = { ...data }
+      if (mod) {
+        // Merge key defaults for missing keys
+        mod.schema.keys.forEach((k) => {
+          if (!(k.key in merged) && k.default !== undefined) {
+            merged[k.key] = k.default
+          }
+        })
+        // Merge list defaults for missing or empty lists
+        if (mod.schema.listKey && mod.schema.defaultItems && mod.schema.defaultItems.length > 0) {
+          if (!(mod.schema.listKey in merged) || !merged[mod.schema.listKey] || merged[mod.schema.listKey] === '[]') {
+            merged[mod.schema.listKey] = JSON.stringify(mod.schema.defaultItems.map((item, i) => ({ _id: String(i + 1), ...item })))
+          }
+        }
+      }
+      setContent(merged)
+    }).catch(() => setContent({}))
+  }, [sectionTitle, selectedPage])
+
+  const handlePageChange = (slug: string) => {
+    setSelectedPage(slug)
+    localStorage.setItem(STORAGE_KEY, slug)
+    setEditingItemId(null)
+  }
 
   const handleUpdate = (key: string, value: string) => {
     setContent((prev) => ({ ...prev, [key]: value }))
@@ -78,7 +110,11 @@ export default function SectionEditor({ sectionTitle, onBack }: SectionEditorPro
           sectionKeys[mod.schema.listKey] = content[mod.schema.listKey]
         }
       }
-      await bulkUpdateContent(sectionKeys)
+      if (selectedPage) {
+        await updatePageContent(selectedPage, sectionKeys)
+      } else {
+        await bulkUpdateContent(sectionKeys)
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
@@ -139,11 +175,37 @@ export default function SectionEditor({ sectionTitle, onBack }: SectionEditorPro
     <div className="admin-editor">
       <div className="admin-editor-header">
         <button className="btn btn-outline" onClick={onBack}>← Voltar</button>
-        <h2>Editando: {mod.schema.title}</h2>
+        <h2 style={{ fontSize: '1rem' }}>Editando: {mod.schema.title}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', marginRight: 12 }}>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-light)', whiteSpace: 'nowrap' }}>Página:</label>
+          <select
+            value={selectedPage}
+            onChange={(e) => handlePageChange(e.target.value)}
+            style={{
+              padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)',
+              fontSize: '0.82rem', background: 'white', maxWidth: 180,
+            }}
+          >
+            <option value="">Global (padrão)</option>
+            {pages.map((p) => (
+              <option key={p.slug} value={p.slug}>{p.title} ({p.slug})</option>
+            ))}
+          </select>
+        </div>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Salvando...' : saved ? '✓ Salvo!' : 'Salvar'}
         </button>
       </div>
+      {selectedPage && (
+        <div style={{
+          padding: '8px 16px', margin: '0 16px', borderRadius: 6,
+          background: 'rgba(9,52,106,0.06)', border: '1px solid rgba(9,52,106,0.12)',
+          fontSize: '0.78rem', color: 'var(--primary)',
+        }}>
+          Editando conteúdo específico da página <strong>{pages.find(p => p.slug === selectedPage)?.title || selectedPage}</strong>.
+          As alterações não afetarão outras páginas.
+        </div>
+      )}
       <div className="admin-editor-content">
         <AdminComponent {...adminProps} />
       </div>

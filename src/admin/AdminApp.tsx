@@ -73,6 +73,7 @@ export default function AdminApp() {
         <nav>
           <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</button>
           <button className={view === 'pages' ? 'active' : ''} onClick={() => setView('pages')}>Páginas</button>
+          <button className={view === 'section' && sectionTitle === 'Blog' ? 'active' : ''} onClick={() => handleNavigate('section', 'Blog')}>Blog</button>
           <button className={view === 'images' ? 'active' : ''} onClick={() => setView('images')}>Imagens</button>
           <button className={view === 'messages' ? 'active' : ''} onClick={() => setView('messages')}>Mensagens {unreadMessages > 0 && `(${unreadMessages})`}</button>
           <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>
