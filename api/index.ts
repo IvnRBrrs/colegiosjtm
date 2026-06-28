@@ -1,7 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import { fileURLToPath } from 'url'
 import { createDb, initDb } from './db'
 import authRoutes from './routes/auth'
 import contentRoutes from './routes/content'
@@ -33,12 +32,5 @@ app.use('/api/messages', messagesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/blog', blogRoutes)
-
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const PORT = process.env.PORT || 3001
-  app.listen(PORT, () => {
-    console.log(`API running on http://localhost:${PORT} (Turso)`)
-  })
-}
 
 export default app
