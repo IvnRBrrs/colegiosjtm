@@ -47,12 +47,10 @@ export default function DynamicPage() {
     )
   }
 
-  let sectionsOrder: { title: string; instanceId?: string }[]
+  let sectionsOrder: { title: string; instanceId?: string }[] = []
   try {
-    sectionsOrder = content._sections ? JSON.parse(content._sections) : DEFAULT_SECTIONS
-  } catch {
-    sectionsOrder = DEFAULT_SECTIONS
-  }
+    if (content._sections) sectionsOrder = JSON.parse(content._sections)
+  } catch {}
 
   const sections = sectionsOrder.map((s) => ({
     title: s.title,

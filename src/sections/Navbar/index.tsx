@@ -49,7 +49,7 @@ export default function Navbar({ content }: NavbarProps) {
       className={`navbar ${scrolled ? 'scrolled' : ''}`}
     >
       <div className="navbar-inner container">
-        <a href="#hero" className="logo">
+        <a href="/" className="logo">
           <img src={content.nav_logo || '/stj/assets/logo-sao-judas-tadeu.png'} alt="Colégio São Judas Tadeu" className="logo-img" />
         </a>
 

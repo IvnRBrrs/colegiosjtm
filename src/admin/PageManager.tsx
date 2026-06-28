@@ -125,16 +125,7 @@ function PageEditor({ slug, onBack, onSaved }: { slug: string; onBack: () => voi
         if (data._sections) {
           setSections(JSON.parse(data._sections))
         } else {
-          setSections([
-            { title: 'Hero', instanceId: 'hero' },
-            { title: 'Sobre', instanceId: 'sobre' },
-            { title: 'Segmentos', instanceId: 'segmentos' },
-            { title: 'Galeria', instanceId: 'galeria' },
-            { title: 'Depoimentos', instanceId: 'depoimentos' },
-            { title: 'FAQ', instanceId: 'faq' },
-            { title: 'Contato', instanceId: 'contato' },
-            { title: 'Mapa', instanceId: 'mapa' },
-          ])
+          setSections([])
         }
       } catch { setSections([]) }
     }).catch(() => { setSections([]) })
@@ -195,8 +186,10 @@ function PageEditor({ slug, onBack, onSaved }: { slug: string; onBack: () => voi
       await api.put(`/pages/${slug}/content/bulk`, { entries })
       onSaved()
       alert('Página salva!')
-    } catch (err) { console.error(err) }
-    finally { setSaving(false) }
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'desconhecido'))
+    } finally { setSaving(false) }
   }
 
   const moveSection = (index: number, direction: -1 | 1) => {
