@@ -1,14 +1,21 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import apiApp from './api/index.ts'
 
 export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
+  plugins: [
+    react(),
+    {
+      name: 'api',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.startsWith('/api')) {
+            apiApp(req, res, next)
+          } else {
+            next()
+          }
+        })
       },
     },
-  },
+  ],
 })
