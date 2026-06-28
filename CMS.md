@@ -1,4 +1,4 @@
-# RESUMO: Web Studio CMS (Arquitetura e Guia de Replicação React + Vite)
+#  RESUMO: Web Studio CMS (Arquitetura e Guia de Replicação React + Vite)
 
 Este documento detalha o funcionamento, arquitetura e fluxo técnico do **Web Studio CMS**, fornecendo um guia completo para sua adaptação e replicação em uma estrutura de SPA baseada em **React + Vite**.
 
