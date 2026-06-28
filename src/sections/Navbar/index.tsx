@@ -1,40 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type DropdownItem = { label: string; href: string; external?: boolean }
+interface NavbarProps {
+  content: Record<string, string>
+}
 
-type MenuItem =
-  | { label: string; href: string; dropdown?: undefined }
-  | { label: string; href?: undefined; dropdown: DropdownItem[] }
-
-const menuItems: MenuItem[] = [
-  { label: 'Home', href: '#hero' },
-  {
-    label: 'O Colégio',
-    dropdown: [
-      { label: 'Nossa História', href: '#historia' },
-      { label: 'Anos Iniciais', href: '#segmentos' },
-      { label: 'Anos Finais', href: '#segmentos' },
-      { label: 'Ensino Médio', href: '#segmentos' },
-    ],
-  },
-  {
-    label: 'Links',
-    dropdown: [
-      { label: 'Activesoft', href: 'https://siga03.activesoft.com.br/login/?instituicao=SAOJUDAS', external: true },
-      { label: 'Área do Aluno', href: 'http://drive.google.com/drive/folders/0AIjBGxYgeUOYUk9PVA', external: true },
-      { label: 'Portal SAE', href: 'https://app.sae.digital/entrar/', external: true },
-    ],
-  },
-  { label: 'Blog', href: '#blog' },
-  { label: 'Contato', href: '#contact' },
-]
-
-export default function Navbar() {
+export default function Navbar({ content }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null!)
+
+  let menuItems: Record<string, string>[] = []
+  try {
+    const raw = content._nav_items
+    if (raw) menuItems = JSON.parse(raw)
+  } catch {}
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60)
@@ -69,60 +50,67 @@ export default function Navbar() {
     >
       <div className="navbar-inner container">
         <a href="#hero" className="logo">
-          <img src="/stj/assets/logo-sao-judas-tadeu.png" alt="Colégio São Judas Tadeu" className="logo-img" />
+          <img src={content.nav_logo || '/stj/assets/logo-sao-judas-tadeu.png'} alt="Colégio São Judas Tadeu" className="logo-img" />
         </a>
 
         <div className="nav-links" ref={dropdownRef}>
-          {menuItems.map((item) => (
-            <div
-              key={item.label}
-              className="nav-item"
-              onMouseEnter={() => item.dropdown && setOpenDropdown(item.label)}
-              onMouseLeave={() => item.dropdown && setOpenDropdown(null)}
-            >
-              {item.dropdown ? (
-                <>
-                  <button
-                    className="nav-link nav-dropdown-trigger"
-                    onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
-                  >
-                    {item.label}
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`dropdown-arrow ${openDropdown === item.label ? 'open' : ''}`}>
-                      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  <AnimatePresence>
-                    {openDropdown === item.label && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        transition={{ duration: 0.2 }}
-                        className="dropdown-menu"
-                      >
-                        {item.dropdown.map((d) => (
-                          d.external ? (
-                            <a key={d.label} href={d.href} target="_blank" rel="noopener noreferrer" className="dropdown-link">
-                              {d.label}
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="external-icon">
-                                <path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </a>
-                          ) : (
-                            <a key={d.label} href={d.href} className="dropdown-link" onClick={() => setOpenDropdown(null)}>
-                              {d.label}
-                            </a>
-                          )
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </>
-              ) : (
-                <a href={item.href} className="nav-link">{item.label}</a>
-              )}
-            </div>
-          ))}
+          {menuItems.map((item) => {
+            let dropdown: { label: string; href: string; external?: boolean }[] = []
+            try {
+              if (item.dropdown_items) dropdown = JSON.parse(item.dropdown_items)
+            } catch {}
+
+            return (
+              <div
+                key={item._id || item.label}
+                className="nav-item"
+                onMouseEnter={() => dropdown.length > 0 && setOpenDropdown(item.label)}
+                onMouseLeave={() => dropdown.length > 0 && setOpenDropdown(null)}
+              >
+                {dropdown.length > 0 ? (
+                  <>
+                    <button
+                      className="nav-link nav-dropdown-trigger"
+                      onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
+                    >
+                      {item.label}
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`dropdown-arrow ${openDropdown === item.label ? 'open' : ''}`}>
+                        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <AnimatePresence>
+                      {openDropdown === item.label && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          transition={{ duration: 0.2 }}
+                          className="dropdown-menu"
+                        >
+                          {dropdown.map((d) => (
+                            d.external ? (
+                              <a key={d.label} href={d.href} target="_blank" rel="noopener noreferrer" className="dropdown-link">
+                                {d.label}
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="external-icon">
+                                  <path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </a>
+                            ) : (
+                              <a key={d.label} href={d.href} className="dropdown-link" onClick={() => setOpenDropdown(null)}>
+                                {d.label}
+                              </a>
+                            )
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                ) : (
+                  <a href={item.href} className="nav-link">{item.label}</a>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <button className="hamburger" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
@@ -138,30 +126,37 @@ export default function Navbar() {
             exit={{ opacity: 0, y: -20 }}
             className="mobile-menu"
           >
-            {menuItems.map((item) => (
-              <div key={item.label} className="mobile-group">
-                {item.dropdown ? (
-                  <>
-                    <span className="mobile-group-label">{item.label}</span>
-                    {item.dropdown.map((d) => (
-                      d.external ? (
-                        <a key={d.label} href={d.href} target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMobileOpen(false)}>
-                          {d.label}
-                        </a>
-                      ) : (
-                        <a key={d.label} href={d.href} className="mobile-link" onClick={() => setMobileOpen(false)}>
-                          {d.label}
-                        </a>
-                      )
-                    ))}
-                  </>
-                ) : (
-                  <a href={item.href} className="mobile-link mobile-link-main" onClick={() => setMobileOpen(false)}>
-                    {item.label}
-                  </a>
-                )}
-              </div>
-            ))}
+            {menuItems.map((item) => {
+              let dropdown: { label: string; href: string; external?: boolean }[] = []
+              try {
+                if (item.dropdown_items) dropdown = JSON.parse(item.dropdown_items)
+              } catch {}
+
+              return (
+                <div key={item._id || item.label} className="mobile-group">
+                  {dropdown.length > 0 ? (
+                    <>
+                      <span className="mobile-group-label">{item.label}</span>
+                      {dropdown.map((d) => (
+                        d.external ? (
+                          <a key={d.label} href={d.href} target="_blank" rel="noopener noreferrer" className="mobile-link" onClick={() => setMobileOpen(false)}>
+                            {d.label}
+                          </a>
+                        ) : (
+                          <a key={d.label} href={d.href} className="mobile-link" onClick={() => setMobileOpen(false)}>
+                            {d.label}
+                          </a>
+                        )
+                      ))}
+                    </>
+                  ) : (
+                    <a href={item.href} className="mobile-link mobile-link-main" onClick={() => setMobileOpen(false)}>
+                      {item.label}
+                    </a>
+                  )}
+                </div>
+              )
+            })}
           </motion.div>
         )}
       </AnimatePresence>
@@ -323,7 +318,6 @@ export default function Navbar() {
           backdrop-filter: blur(20px);
           display: flex;
           flex-direction: column;
-          
           justify-content: flex-start;
           gap: 28px;
           z-index: 999999;
@@ -335,7 +329,6 @@ export default function Navbar() {
         .mobile-group {
           display: flex;
           flex-direction: column;
-
           gap: 12px;
         }
         .mobile-group-label {
