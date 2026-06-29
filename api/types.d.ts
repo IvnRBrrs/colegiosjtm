@@ -1,9 +1,9 @@
-import { createClient } from '@libsql/client'
+import type { Client } from '@libsql/client/http'
 
 declare global {
   namespace Express {
     interface Request {
-      db?: ReturnType<typeof createClient>
+      db?: Client
     }
   }
 }

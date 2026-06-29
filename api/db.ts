@@ -1,4 +1,4 @@
-import { createClient } from '@libsql/client'
+import { createClient } from '@libsql/client/http'
 
 export function createDb() {
   const url = process.env.DATABASE_URL
