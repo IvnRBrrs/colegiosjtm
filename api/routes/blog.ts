@@ -71,7 +71,7 @@ router.get('/posts/:id', async (req: Request, res: Response) => {
   try {
     const result = await req.db!.execute({
       sql: 'SELECT * FROM blog_posts WHERE id = ? OR slug = ?',
-      args: [req.params.id, req.params.id],
+      args: [req.params.id as string, req.params.id as string],
     })
     if (result.rows.length === 0) return res.status(404).json({ error: 'Post not found' })
     res.json(result.rows[0])
@@ -124,7 +124,7 @@ router.put('/posts/:id', authMiddleware, async (req: AuthRequest, res: Response)
     const { title, subtitle, content, author, date, tags, images, videos, published } = req.body
     const existing = await req.db!.execute({
       sql: 'SELECT * FROM blog_posts WHERE id = ?',
-      args: [req.params.id],
+      args: [req.params.id as string],
     })
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Post not found' })
 
@@ -133,7 +133,7 @@ router.put('/posts/:id', authMiddleware, async (req: AuthRequest, res: Response)
       slug = slugify(title)
       const dup = await req.db!.execute({
         sql: 'SELECT COUNT(*) as count FROM blog_posts WHERE slug = ? AND id != ?',
-        args: [slug, req.params.id],
+        args: [slug, req.params.id as string],
       })
       if ((dup.rows[0] as any).count > 0) {
         slug = slug + '-' + Date.now()
@@ -156,7 +156,7 @@ router.put('/posts/:id', authMiddleware, async (req: AuthRequest, res: Response)
         videos ? JSON.stringify(videos) : existing.rows[0].videos,
         slug,
         published !== undefined ? (published ? 1 : 0) : existing.rows[0].published,
-        req.params.id,
+        req.params.id as string,
       ],
     })
 
@@ -170,7 +170,7 @@ router.delete('/posts/:id', authMiddleware, async (req: AuthRequest, res: Respon
   try {
     const result = await req.db!.execute({
       sql: 'DELETE FROM blog_posts WHERE id = ?',
-      args: [req.params.id],
+      args: [req.params.id as string],
     })
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Post not found' })
     res.json({ success: true })

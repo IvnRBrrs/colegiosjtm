@@ -36,7 +36,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
   try {
     await req.db!.execute({
       sql: 'DELETE FROM images WHERE id = ?',
-      args: [req.params.id],
+      args: [req.params.id as string],
     })
     res.json({ success: true })
   } catch (err) {

@@ -33,7 +33,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.put('/:slug', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { title, show_in_menu, parent_slug, menu_order } = req.body
-    const cleanSlug = normalizeSlug(req.params.slug)
+    const cleanSlug = normalizeSlug(req.params.slug as string)
     await req.db!.execute({
       sql: 'UPDATE pages SET title = ?, show_in_menu = ?, parent_slug = ?, menu_order = ? WHERE slug = ?',
       args: [title, show_in_menu, parent_slug || null, menu_order, cleanSlug],
@@ -46,7 +46,7 @@ router.put('/:slug', authMiddleware, async (req: AuthRequest, res: Response) => 
 
 router.delete('/:slug', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const cleanSlug = normalizeSlug(req.params.slug)
+    const cleanSlug = normalizeSlug(req.params.slug as string)
     await req.db!.execute({
       sql: 'DELETE FROM pages WHERE slug = ?',
       args: [cleanSlug],
@@ -64,7 +64,7 @@ router.delete('/:slug', authMiddleware, async (req: AuthRequest, res: Response) 
 // Page content (merged with global content as defaults)
 router.get('/:slug/content', async (req: Request, res: Response) => {
   try {
-    const cleanSlug = normalizeSlug(req.params.slug)
+    const cleanSlug = normalizeSlug(req.params.slug as string)
     const [pageResult, globalResult] = await Promise.all([
       req.db!.execute({
         sql: 'SELECT * FROM page_content WHERE page_slug = ?',
@@ -95,7 +95,7 @@ router.put('/:slug/content', authMiddleware, async (req: AuthRequest, res: Respo
   try {
     const { key, value } = req.body
     if (!key) return res.status(400).json({ error: 'Key is required' })
-    const cleanSlug = normalizeSlug(req.params.slug)
+    const cleanSlug = normalizeSlug(req.params.slug as string)
 
     await req.db!.execute({
       sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
@@ -112,7 +112,7 @@ router.put('/:slug/content', authMiddleware, async (req: AuthRequest, res: Respo
 router.put('/:slug/content/bulk', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { entries } = req.body as { entries: Record<string, string> }
-    const cleanSlug = normalizeSlug(req.params.slug)
+    const cleanSlug = normalizeSlug(req.params.slug as string)
     for (const [key, value] of Object.entries(entries)) {
       await req.db!.execute({
         sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)

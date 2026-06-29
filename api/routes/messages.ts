@@ -34,7 +34,7 @@ router.put('/:id/read', authMiddleware, async (req: AuthRequest, res: Response) 
   try {
     await req.db!.execute({
       sql: 'UPDATE contact_messages SET read = 1 WHERE id = ?',
-      args: [req.params.id],
+      args: [req.params.id as string],
     })
     res.json({ success: true })
   } catch (err) {
@@ -46,7 +46,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
   try {
     await req.db!.execute({
       sql: 'DELETE FROM contact_messages WHERE id = ?',
-      args: [req.params.id],
+      args: [req.params.id as string],
     })
     res.json({ success: true })
   } catch (err) {

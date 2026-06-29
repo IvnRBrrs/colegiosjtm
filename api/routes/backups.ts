@@ -7,7 +7,7 @@ router.get('/:sectionKey', async (req: AuthRequest, res: Response) => {
   try {
     const result = await req.db!.execute({
       sql: 'SELECT * FROM content_backups WHERE section_key = ? ORDER BY version DESC LIMIT 6',
-      args: [req.params.sectionKey],
+      args: [req.params.sectionKey as string],
     })
     res.json(result.rows)
   } catch (err) {

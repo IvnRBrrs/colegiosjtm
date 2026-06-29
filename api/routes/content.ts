@@ -56,7 +56,7 @@ router.delete('/:key', authMiddleware, async (req: AuthRequest, res: Response) =
   try {
     await req.db!.execute({
       sql: 'DELETE FROM content WHERE key = ?',
-      args: [req.params.key],
+      args: [req.params.key as string],
     })
     res.json({ success: true })
   } catch (err) {
