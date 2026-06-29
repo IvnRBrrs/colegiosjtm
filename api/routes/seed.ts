@@ -6,7 +6,8 @@ import crypto from 'crypto'
 
 const router = Router()
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+let __dirname = ''
+try { __dirname = dirname(fileURLToPath(import.meta.url)) } catch {}
 const ASSETS_DIR = join(__dirname, '..', '..', 'public', 'stj', 'assets')
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
