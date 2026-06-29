@@ -4,13 +4,16 @@ export function createDb() {
   const url = process.env.DATABASE_URL
   if (!url) throw new Error('DATABASE_URL environment variable is required')
   const isTurso = url.startsWith('libsql://')
+  console.log('[api/db.js] URL:', url.slice(0, 30) + '...', 'isTurso:', isTurso, 'hasToken:', !!process.env.DATABASE_AUTH_TOKEN)
 
-  return createClient({
+  const client = createClient({
     url,
     ...(isTurso && process.env.DATABASE_AUTH_TOKEN
       ? { authToken: process.env.DATABASE_AUTH_TOKEN }
       : {}),
   })
+  console.log('[api/db.js] Client created successfully')
+  return client
 }
 
 export async function initDb(db) {

@@ -119,12 +119,22 @@ router.post('/', authMiddleware, async (req, res) => {
 
 router.get('/:slug/content', async (req, res) => {
   try {
-    const result = await req.db.execute({
+    // Fetch global content
+    const globalResult = await req.db.execute('SELECT key, value FROM content')
+    const content = {}
+    for (const row of globalResult.rows) {
+      try {
+        content[row.key] = JSON.parse(row.value)
+      } catch {
+        content[row.key] = row.value
+      }
+    }
+    // Fetch page-specific content (overrides global)
+    const pageResult = await req.db.execute({
       sql: 'SELECT key, value FROM page_content WHERE page_slug = ?',
       args: [req.params.slug],
     })
-    const content = {}
-    for (const row of result.rows) {
+    for (const row of pageResult.rows) {
       try {
         content[row.key] = JSON.parse(row.value)
       } catch {

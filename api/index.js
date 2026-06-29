@@ -11,19 +11,25 @@ import backupsRoutes from './routes/backups.js'
 import seedRoutes from './routes/seed.js'
 import blogRoutes from './routes/blog.js'
 
+console.log('[api/index.js] Starting module load...')
+console.log('[api/index.js] DATABASE_URL present:', !!process.env.DATABASE_URL)
+console.log('[api/index.js] DATABASE_AUTH_TOKEN present:', !!process.env.DATABASE_AUTH_TOKEN)
+
 let db = null
 
 try {
   db = createDb()
+  console.log('[api/index.js] createDb() OK, db type:', typeof db)
 } catch (e) {
-  console.error('createDb failed:', e)
+  console.error('[api/index.js] createDb FAILED:', e.message)
 }
 
 if (db) {
-  initDb(db).catch((e) => console.error('initDb failed:', e))
+  initDb(db).then(() => console.log('[api/index.js] initDb() complete')).catch((e) => console.error('[api/index.js] initDb failed:', e.message))
 }
 
 const app = express()
+console.log('[api/index.js] Express app created')
 
 app.use(cors())
 app.use(express.json({ limit: '50mb' }))
