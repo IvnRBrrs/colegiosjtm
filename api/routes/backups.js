@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
+import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
@@ -9,7 +10,7 @@ router.get('/:sectionKey', async (req, res) => {
       sql: 'SELECT * FROM content_backups WHERE section_key = ? ORDER BY version DESC LIMIT 6',
       args: [req.params.sectionKey],
     })
-    res.json(result.rows)
+    res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }

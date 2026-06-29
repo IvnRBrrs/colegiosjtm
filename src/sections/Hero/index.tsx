@@ -1,24 +1,34 @@
-import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { useRef, useCallback } from 'react'
+import { motion, useMotionValue } from 'framer-motion'
 
 interface HeroProps {
   content: Record<string, string>
 }
 
 export default function Hero({ content }: HeroProps) {
-  const sectionRef = useRef<HTMLDivElement>(null!)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start start', 'end start'],
-  })
+  const glassRef = useRef<HTMLDivElement>(null!)
+  const rotateX = useMotionValue(0)
+  const rotateY = useMotionValue(0)
 
-  const textOpacity = useTransform(scrollYProgress, [0.3, 0.55], [1, 0])
-  const textY = useTransform(scrollYProgress, [0.3, 0.55], [0, -60])
-  const blurAmount = useTransform(scrollYProgress, [0.3, 0.55], [0, 6])
-  const textBlur = useTransform(blurAmount, (v) => `blur(${v}px)`)
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = glassRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const deltaX = (e.clientX - centerX) / (rect.width / 2)
+    const deltaY = (e.clientY - centerY) / (rect.height / 2)
+    rotateX.set(-deltaY * 6)
+    rotateY.set(deltaX * 6)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    rotateX.set(0)
+    rotateY.set(0)
+  }, [])
 
   return (
-    <section id="hero" ref={sectionRef} className="hero-section">
+    <section id="hero" className="hero-section">
       <div className="hero-overlay" />
       <div
         className="hero-bg"
@@ -27,13 +37,19 @@ export default function Hero({ content }: HeroProps) {
 
       <div className="container hero-content">
         <motion.div
-          style={{ opacity: textOpacity, y: textY, filter: textBlur }}
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           className="hero-text"
         >
-          <div className="hero-text-glass">
+          <motion.div
+            ref={glassRef}
+            className="hero-text-glass"
+            style={{ rotateX, rotateY, perspective: 800, transformStyle: 'preserve-3d' }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          >
             <span className="hero-welcome">{content.hero_welcome || 'Tradição desde 1989'}</span>
             <h1 className="hero-title">
               {content.hero_title1 || 'Educação que'}
@@ -51,13 +67,13 @@ export default function Hero({ content }: HeroProps) {
                 {content.btn_outline_text || 'Entre em Contato'}
               </a>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
+          transition={{ delay: 1.2 }}
           className="scroll-indicator"
         >
           <div className="scroll-mouse">
@@ -108,6 +124,11 @@ export default function Hero({ content }: HeroProps) {
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.1);
           box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+          max-width: 100%;
+          overflow: hidden;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          hyphens: auto;
         }
         .hero-welcome {
           display: inline-block;
@@ -121,24 +142,27 @@ export default function Hero({ content }: HeroProps) {
           border: 1px solid rgba(244,240,132,0.3);
           border-radius: 100px;
           background: rgba(244,240,132,0.08);
+          max-width: 100%;
         }
         .hero-title {
-          font-size: clamp(2.5rem, 6vw, 4.5rem);
+          font-size: clamp(1.8rem, 5vw, 3.5rem);
           font-weight: 800;
-          line-height: 1.05;
+          line-height: 1.1;
           color: white;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
           letter-spacing: -0.02em;
+          max-width: 100%;
         }
         .hero-accent {
           color: var(--accent);
         }
         .hero-description {
-          font-size: 1.1rem;
-          color: rgba(255,255,255,0.8);
-          max-width: 520px;
-          line-height: 1.7;
-          margin-bottom: 36px;
+          font-size: clamp(0.9rem, 2vw, 1.1rem);
+          color: rgba(255,255,255,0.85);
+          max-width: 100%;
+          line-height: 1.6;
+          margin-bottom: 32px;
+          overflow-wrap: break-word;
         }
         .hero-actions {
           display: flex;
@@ -156,8 +180,9 @@ export default function Hero({ content }: HeroProps) {
         }
         .scroll-indicator {
           position: absolute;
-          top: 120px;
-          right: 40px;
+          top: 13%;
+          right: 0%;
+          transform: translateX(-50%);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -167,6 +192,7 @@ export default function Hero({ content }: HeroProps) {
           font-weight: 500;
           letter-spacing: 0.1em;
           text-transform: uppercase;
+          z-index: 100;
         }
         .scroll-mouse {
           width: 20px;
@@ -189,8 +215,11 @@ export default function Hero({ content }: HeroProps) {
           50% { transform: translateY(6px); opacity: 0.3; }
         }
         @media (max-width: 768px) {
-          .hero-actions { flex-direction: column; }
           .hero-text-glass { padding: 28px 20px; }
+          .hero-actions { flex-direction: column; }
+          .hero-actions .btn { width: 100%; text-align: center; }
+          .hero-title { font-size: clamp(1.5rem, 7vw, 2.2rem); }
+          .scroll-indicator { display: none; }
         }
       `}</style>
     </section>

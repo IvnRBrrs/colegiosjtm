@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
+import { rowsToObjects } from '../rows.js'
 import crypto from 'crypto'
 
 const router = Router()
@@ -57,7 +58,7 @@ router.get('/posts', async (req, res) => {
     })
 
     res.json({
-      posts: result.rows,
+      posts: rowsToObjects(result.rows, result.columns),
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -74,7 +75,7 @@ router.get('/posts/:id', async (req, res) => {
       args: [req.params.id, req.params.id],
     })
     if (result.rows.length === 0) return res.status(404).json({ error: 'Post not found' })
-    res.json(result.rows[0])
+    res.json(rowsToObjects(result.rows, result.columns)[0])
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
@@ -208,7 +209,7 @@ router.get('/archive', async (req, res) => {
       SELECT strftime('%Y', date) as year, strftime('%m', date) as month, COUNT(*) as count
       FROM blog_posts GROUP BY year, month ORDER BY year DESC, month DESC
     `)
-    res.json(result.rows)
+    res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }

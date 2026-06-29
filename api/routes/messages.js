@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
+import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const result = await req.db.execute('SELECT * FROM contact_messages ORDER BY created_at DESC')
-    res.json(result.rows)
+    res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
