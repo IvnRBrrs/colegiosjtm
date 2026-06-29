@@ -1,4 +1,4 @@
-import type { Client } from '@libsql/client/http'
+import type { Client } from '@tursodatabase/serverless/compat'
 
 declare global {
   namespace Express {

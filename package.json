@@ -25,6 +25,7 @@
     "@libsql/client": "^0.17.4",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "@tursodatabase/serverless": "^1.2.3",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",

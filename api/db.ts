@@ -1,4 +1,4 @@
-import { createClient } from '@libsql/client/http'
+import { createClient } from '@tursodatabase/serverless/compat'
 
 export function createDb() {
   const url = process.env.DATABASE_URL
