@@ -30,7 +30,9 @@ export default api
 
 // Content helpers
 export async function fetchContent(): Promise<Record<string, string>> {
+  console.log('[API] fetchContent')
   const { data } = await api.get('/content')
+  console.log('[API] fetchContent SUCCESS, keys:', Object.keys(data).length)
   return data
 }
 
@@ -49,8 +51,15 @@ export async function fetchPages() {
 }
 
 export async function fetchPageContent(slug: string): Promise<Record<string, string>> {
-  const { data } = await api.get(`/pages/${slug}/content`)
-  return data
+  console.log('[API] fetchPageContent slug:', slug)
+  try {
+    const { data } = await api.get(`/pages/${slug}/content`)
+    console.log('[API] fetchPageContent SUCCESS, keys:', Object.keys(data).length, 'has _sections:', !!data._sections)
+    return data
+  } catch (err) {
+    console.error('[API] fetchPageContent ERROR:', err)
+    throw err
+  }
 }
 
 export async function updatePageContent(slug: string, entries: Record<string, string>) {

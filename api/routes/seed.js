@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express'
+﻿import { Router } from 'express'
 import { readFileSync, readdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -12,14 +12,14 @@ const ASSETS_DIR = join(__dirname, '..', '..', 'public', 'stj', 'assets')
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
 
-router.post('/images', async (req: Request, res: Response) => {
+router.post('/images', async (req, res) => {
   try {
-    const existing = await req.db!.execute('SELECT COUNT(*) as count FROM images')
-    if ((existing.rows[0] as any).count > 0) {
-      return res.json({ message: 'Images already seeded', count: (existing.rows[0] as any).count })
+    const existing = await req.db.execute('SELECT COUNT(*) as count FROM images')
+    if (existing.rows[0].count > 0) {
+      return res.json({ message: 'Images already seeded', count: existing.rows[0].count })
     }
 
-    let files: string[]
+    let files
     try {
       files = readdirSync(ASSETS_DIR).filter((f) =>
         IMAGE_EXTENSIONS.some((ext) => f.toLowerCase().endsWith(ext))
@@ -33,11 +33,11 @@ router.post('/images', async (req: Request, res: Response) => {
       const filePath = join(ASSETS_DIR, file)
       const buffer = readFileSync(filePath)
       const base64 = buffer.toString('base64')
-      const ext = file.split('.').pop()!.toLowerCase()
+      const ext = file.split('.').pop().toLowerCase()
       const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
 
       const id = crypto.randomUUID()
-      await req.db!.execute({
+      await req.db.execute({
         sql: 'INSERT OR IGNORE INTO images (id, filename, data, type, component_type) VALUES (?, ?, ?, ?, ?)',
         args: [id, file, base64, mime, 'seed'],
       })
@@ -50,15 +50,14 @@ router.post('/images', async (req: Request, res: Response) => {
   }
 })
 
-router.post('/content', async (req: Request, res: Response) => {
+router.post('/content', async (req, res) => {
   try {
-    const existing = await req.db!.execute('SELECT COUNT(*) as count FROM content')
-    if ((existing.rows[0] as any).count > 0) {
+    const existing = await req.db.execute('SELECT COUNT(*) as count FROM content')
+    if (existing.rows[0].count > 0) {
       return res.json({ message: 'Content already seeded' })
     }
 
-    const defaults: Record<string, string> = {
-      // Hero
+    const defaults = {
       hero_background: '/stj/assets/BANNER-1920x793-CSJT-2048x846.png',
       hero_welcome: 'Tradição desde 1989',
       hero_title1: 'Educação que',
@@ -69,16 +68,12 @@ router.post('/content', async (req: Request, res: Response) => {
       btn_outline_text: 'Entre em Contato',
       btn_outline_href: '#contact',
       scroll_text: 'Role para conhecer',
-
-      // Sobre
       sobre_label: 'Nossa História',
       sobre_display_title: 'Nossa',
       sobre_highlight: 'História',
       sobre_paragraph1: 'Fundado em 1989, o <strong>Colégio São Judas Tadeu</strong> é uma instituição com a missão de desempenhar um papel fundamental na formação e desenvolvimento dos alunos.',
       sobre_paragraph2: 'Ao longo de mais de três décadas, formamos gerações de estudantes que hoje se destacam nas mais diversas áreas.',
       sobre_image: '/stj/assets/nossa-historio-banner.jpg',
-
-      // Segmentos
       seg_label: 'Segmentos de Ensino',
       seg_title_prefix: 'Nossos',
       seg_title_highlight: 'Segmentos',
@@ -88,8 +83,6 @@ router.post('/content', async (req: Request, res: Response) => {
         { _id: '2', title: 'Anos Finais', copy: 'Com turmas do 6º ao 9º Ano, a ênfase é dada ao aprofundamento dos conhecimentos adquiridos nos Anos Iniciais.', icon: '2', gradient_from: '#153D8A', gradient_to: '#1a4da8', link_text: 'Saiba mais', link_href: '#contact' },
         { _id: '3', title: 'Ensino Médio', copy: 'Busca desenvolver habilidades como pensamento crítico, capacidade de análise, autonomia e preparação para a vida adulta.', icon: '3', gradient_from: '#06244A', gradient_to: '#09346A', link_text: 'Saiba mais', link_href: '#contact' },
       ]),
-
-      // Galeria
       gal_label: 'Galeria',
       gal_title_prefix: 'Nossa',
       gal_title_highlight: 'Estrutura',
@@ -102,8 +95,6 @@ router.post('/content', async (req: Request, res: Response) => {
         { _id: '5', url: '/stj/assets/carrossel-5.jpg', alt: 'Imagem 5' },
         { _id: '6', url: '/stj/assets/carrossel-6.jpg', alt: 'Imagem 6' },
       ]),
-
-      // Depoimentos
       dep_label: 'Depoimentos',
       dep_title_prefix: 'O que dizem sobre',
       dep_title_highlight: 'nós',
@@ -112,8 +103,6 @@ router.post('/content', async (req: Request, res: Response) => {
         { _id: '2', nome: 'Carlos Eduardo Mendes', relacao: 'Ex-aluno — Ensino Médio', texto: 'Levo comigo os valores e a base sólida que adquiri no São Judas. A formação que recebi foi essencial para minha trajetória acadêmica e profissional.' },
         { _id: '3', nome: 'Ana Beatriz Oliveira', relacao: 'Professora', texto: 'Trabalhar no São Judas é gratificante. Aqui temos liberdade pedagógica e uma equipe engajada em oferecer o melhor para cada aluno.' },
       ]),
-
-      // FAQ
       faq_label: 'FAQ',
       faq_title_prefix: 'Perguntas',
       faq_title_highlight: 'Frequentes',
@@ -126,23 +115,17 @@ router.post('/content', async (req: Request, res: Response) => {
         { _id: '5', q: 'O colégio possui acessibilidade?', a: 'Sim, nossa estrutura é adaptada para receber alunos com necessidades especiais.' },
         { _id: '6', q: 'Como posso entrar em contato com a coordenação pedagógica?', a: 'A coordenação pedagógica atende presencialmente mediante agendamento.' },
       ]),
-
-      // Mapa
       map_label: 'Localização',
       map_title_prefix: 'Onde',
       map_title_highlight: 'Estamos',
       map_address: 'Rua Adolfo Gustavo, 435, Serraria, Maceió-AL',
       map_iframe_src: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3933.172065679885!2d-35.7557525!3d-9.6084207!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x7014566c2c8b1b9%3A0x5c5c5c5c5c5c5c5c!2sRua%20Adolfo%20Gustavo%2C%20435%20-%20Serraria%2C%20Macei%C3%B3%20-%20AL!5e0!3m2!1spt-BR!2sbr!4v1',
-
-      // Blog
       blog_label: 'Blog',
       blog_title_prefix: 'Últimas do',
       blog_title_highlight: 'Blog',
       blog_subtitle: 'Acompanhe as novidades do Colégio São Judas Tadeu.',
       blog_posts_per_page: '10',
       blog_show_sidebar: 'true',
-
-      // Contato
       cont_label: 'Contato',
       cont_title_prefix: 'Entre em',
       cont_title_highlight: 'Contato',
@@ -157,8 +140,6 @@ router.post('/content', async (req: Request, res: Response) => {
       form_placeholder_message: 'Como podemos ajudar?',
       form_btn_text: 'Enviar Mensagem',
       form_success_text: 'Mensagem enviada!',
-
-      // Footer
       footer_logo: '/stj/assets/logo-sao-judas-tadeu.png',
       footer_description: 'Educação que transforma futuros há mais de três décadas.',
       social_instagram_url: 'https://instagram.com/colegiosjtm',
@@ -174,8 +155,6 @@ router.post('/content', async (req: Request, res: Response) => {
       link3_url: 'http://drive.google.com/drive/folders/0AIjBGxYgeUOYUk9PVA',
       footer_copyright: 'Colégio São Judas Tadeu',
       footer_year: '2026',
-
-      // Navbar
       nav_logo: '/stj/assets/logo-sao-judas-tadeu.png',
       _nav_items: JSON.stringify([
         { _id: '1', label: 'Home', href: '#hero' },
@@ -183,8 +162,6 @@ router.post('/content', async (req: Request, res: Response) => {
         { _id: '3', label: 'Links', dropdown_items: JSON.stringify([{ label: 'Activesoft', href: 'https://siga03.activesoft.com.br/login/?instituicao=SAOJUDAS', external: true }, { label: 'Área do Aluno', href: 'http://drive.google.com/drive/folders/0AIjBGxYgeUOYUk9PVA', external: true }, { label: 'Portal SAE', href: 'https://app.sae.digital/entrar/', external: true }]) },
         { _id: '4', label: 'Contato', href: '#contact' },
       ]),
-
-      // Cores do tema
       color_primary: '#09346A',
       color_primary_dark: '#06244A',
       color_primary_light: '#153D8A',
@@ -197,19 +174,18 @@ router.post('/content', async (req: Request, res: Response) => {
     }
 
     for (const [key, value] of Object.entries(defaults)) {
-      await req.db!.execute({
+      await req.db.execute({
         sql: 'INSERT OR REPLACE INTO content (key, value) VALUES (?, ?)',
         args: [key, value],
       })
     }
 
-    // Create home page
-    await req.db!.execute({
+    await req.db.execute({
       sql: 'INSERT OR IGNORE INTO pages (slug, title, show_in_menu) VALUES (?, ?, ?)',
       args: ['home', 'Home', 1],
     })
 
-    await req.db!.execute({
+    await req.db.execute({
       sql: "INSERT OR REPLACE INTO page_content (page_slug, key, value) VALUES (?, ?, ?)",
       args: ['home', '_sections', JSON.stringify([
         { title: 'Hero', instanceId: 'hero' },

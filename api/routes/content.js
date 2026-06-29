@@ -1,14 +1,14 @@
-import { Router, Request, Response } from 'express'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { Router } from 'express'
+import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req, res) => {
   try {
-    const result = await req.db!.execute('SELECT * FROM content ORDER BY key')
-    const data: Record<string, string> = {}
+    const result = await req.db.execute('SELECT * FROM content ORDER BY key')
+    const data = {}
     result.rows.forEach((row) => {
-      data[row.key as string] = row.value as string
+      data[row.key] = row.value
     })
     res.json(data)
   } catch (err) {
@@ -16,12 +16,12 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-router.put('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put('/', authMiddleware, async (req, res) => {
   try {
     const { key, value } = req.body
     if (!key) return res.status(400).json({ error: 'Key is required' })
 
-    await req.db!.execute({
+    await req.db.execute({
       sql: `INSERT INTO content (key, value, updated_at) VALUES (?, ?, datetime('now'))
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
       args: [key, value],
@@ -33,13 +33,13 @@ router.put('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.put('/bulk', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.put('/bulk', authMiddleware, async (req, res) => {
   try {
-    const { entries } = req.body as { entries: Record<string, string> }
+    const { entries } = req.body
     if (!entries) return res.status(400).json({ error: 'Entries required' })
 
     for (const [key, value] of Object.entries(entries)) {
-      await req.db!.execute({
+      await req.db.execute({
         sql: `INSERT INTO content (key, value, updated_at) VALUES (?, ?, datetime('now'))
               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
         args: [key, value],
@@ -52,11 +52,11 @@ router.put('/bulk', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.delete('/:key', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.delete('/:key', authMiddleware, async (req, res) => {
   try {
-    await req.db!.execute({
+    await req.db.execute({
       sql: 'DELETE FROM content WHERE key = ?',
-      args: [req.params.key as string],
+      args: [req.params.key],
     })
     res.json({ success: true })
   } catch (err) {

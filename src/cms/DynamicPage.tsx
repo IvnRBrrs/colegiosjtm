@@ -24,12 +24,17 @@ export default function DynamicPage() {
 
   useEffect(() => {
     async function load() {
+      console.log('[DynamicPage] Loading page slug:', pageSlug)
       try {
         const data = await fetchPageContent(pageSlug)
+        console.log('[DynamicPage] Content received, keys:', Object.keys(data))
+        console.log('[DynamicPage] _sections raw:', data._sections)
         setContent(data)
-      } catch {
+      } catch (err) {
+        console.error('[DynamicPage] Failed to load content:', err)
         setContent({})
       } finally {
+        console.log('[DynamicPage] Loading complete')
         setLoading(false)
       }
     }
@@ -49,8 +54,15 @@ export default function DynamicPage() {
 
   let sectionsOrder: { title: string; instanceId?: string }[] = []
   try {
-    if (content._sections) sectionsOrder = JSON.parse(content._sections)
-  } catch {}
+    if (content._sections) {
+      sectionsOrder = JSON.parse(content._sections)
+      console.log('[DynamicPage] Parsed sectionsOrder:', sectionsOrder.length, 'items')
+    } else {
+      console.warn('[DynamicPage] No _sections in content, keys:', Object.keys(content))
+    }
+  } catch (e) {
+    console.error('[DynamicPage] Failed to parse _sections:', content._sections, e)
+  }
 
   const sections = sectionsOrder.map((s) => ({
     title: s.title,

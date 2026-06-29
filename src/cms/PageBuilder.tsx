@@ -19,11 +19,15 @@ interface PageBuilderProps {
 }
 
 export default function PageBuilder({ sections }: PageBuilderProps) {
+  console.log('[PageBuilder] Rendering sections:', sections.length, sections.map(s => s.title).join(', '))
   return (
     <>
       {sections.map((section, i) => {
         const mod = getModularSection(section.title)
-        if (!mod) return null
+        if (!mod) {
+          console.warn('[PageBuilder] Section not found in registry:', section.title)
+          return null
+        }
 
         const SectionComponent = mod.Component
         const content = useMemo(
