@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import express from 'express'
+import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import { createDb, initDb } from './db'
 import authRoutes from './routes/auth'
@@ -11,15 +11,27 @@ import backupsRoutes from './routes/backups'
 import seedRoutes from './routes/seed'
 import blogRoutes from './routes/blog'
 
-const app = express()
-const db = createDb()
+let db: ReturnType<typeof createDb> | null = null
 
-initDb(db).catch(console.error)
+try {
+  db = createDb()
+} catch (e) {
+  console.error('createDb failed:', e)
+}
+
+if (db) {
+  initDb(db).catch((e) => console.error('initDb failed:', e))
+}
+
+const app = express()
 
 app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 
-app.use((req, _res, next) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  if (!db) {
+    return _res.status(500).json({ error: 'Database not initialized' })
+  }
   req.db = db
   next()
 })
@@ -32,5 +44,10 @@ app.use('/api/messages', messagesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/blog', blogRoutes)
+
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error:', err)
+  res.status(500).json({ error: String(err) })
+})
 
 export default app
