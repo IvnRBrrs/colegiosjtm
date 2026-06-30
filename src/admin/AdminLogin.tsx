@@ -66,11 +66,11 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                 {loading ? 'Entrando...' : 'Entrar'}
               </button>
             </form>
-            <p style={{ marginTop: 16, textAlign: 'center', fontSize: '0.85rem' }}>
+            {/* <p style={{ marginTop: 16, textAlign: 'center', fontSize: '0.85rem' }}>
               <button onClick={() => { setMode('setup'); setError('') }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
                 Primeiro acesso? Criar usuário admin
               </button>
-            </p>
+            </p> */}
           </>
         ) : (
           <>
