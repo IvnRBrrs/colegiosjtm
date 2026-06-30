@@ -47,11 +47,11 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
   return (
     <div className="admin-login">
       <div className="admin-login-card">
-        <h1>CMS - Colégio São Judas Tadeu</h1>
+        <h1 style={{ textAlign: 'center' }}>Colégio São Judas Tadeu</h1>
 
         {mode === 'login' ? (
           <>
-            <p className="admin-login-sub">Faça login para gerenciar o conteúdo do site.</p>
+            <p className="admin-login-sub" style={{ textAlign: 'center' }}>Faça login para acessar o sistema</p>
             <form onSubmit={handleLogin}>
               <div className="admin-field">
                 <label>Usuário</label>
@@ -74,7 +74,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           </>
         ) : (
           <>
-            <p className="admin-login-sub">Crie o usuário administrador (apenas no primeiro acesso).</p>
+            {/* <p className="admin-login-sub">Crie o usuário administrador (apenas no primeiro acesso).</p>
             <form onSubmit={handleSetup}>
               <div className="admin-field">
                 <label>Usuário</label>
@@ -93,7 +93,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               <button onClick={() => { setMode('login'); setSetupStatus('') }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
                 Voltar para login
               </button>
-            </p>
+            </p> */}
           </>
         )}
       </div>
