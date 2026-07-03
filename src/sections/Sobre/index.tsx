@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import LazyImage from '../../components/LazyImage'
 
 interface SobreProps {
   content: Record<string, string>
@@ -33,9 +34,10 @@ export default function Sobre({ content }: SobreProps) {
             className="about-image-wrapper"
           >
             <div className="about-image-frame">
-              <div
+              <LazyImage
+                src={content.sobre_image || '/stj/assets/nossa-historio-banner.jpg'}
+                asBackground
                 className="about-image"
-                style={{ backgroundImage: `url(${content.sobre_image || '/stj/assets/nossa-historio-banner.jpg'})` }}
               />
             </div>
           </motion.div>

@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { motion, useMotionValue } from 'framer-motion'
+import LazyImage from '../../components/LazyImage'
 
 interface HeroProps {
   content: Record<string, string>
@@ -30,9 +31,11 @@ export default function Hero({ content }: HeroProps) {
   return (
     <section id="hero" className="hero-section">
       <div className="hero-overlay" />
-      <div
+      <LazyImage
+        src={content.hero_background || '/stj/assets/BANNER-1920x793-CSJT-2048x846.png'}
+        asBackground
         className="hero-bg"
-        style={{ backgroundImage: `url(${content.hero_background || '/stj/assets/BANNER-1920x793-CSJT-2048x846.png'})` }}
+        loading="eager"
       />
 
       <div className="container hero-content">

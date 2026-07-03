@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import LazyImage from '../../components/LazyImage'
 
 interface GaleriaProps {
   content: Record<string, string>
@@ -54,11 +55,10 @@ export default function Galeria({ content }: GaleriaProps) {
                 key={i}
                 className={`carrossel-slide ${i === current ? 'active' : ''}`}
               >
-                <img
+                <LazyImage
                   src={url}
                   alt={`Imagem ${i + 1}`}
                   className="carrossel-image"
-                  loading="lazy"
                 />
               </div>
             ))}
