@@ -55,13 +55,13 @@ router.post('/restore', authMiddleware, async (req, res) => {
     const backup = result.rows[0]
     const value = JSON.parse(backup.value)
 
-    for (const [key, val] of Object.entries(value)) {
-      await req.db.execute({
-        sql: `INSERT INTO content (key, value, updated_at) VALUES (?, ?, datetime('now'))
-              ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
-        args: [key, String(val)],
-      })
-    }
+    const statements = Object.entries(value).map(([key, val]) => ({
+      sql: `INSERT INTO content (key, value, updated_at) VALUES (?, ?, datetime('now'))
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+      args: [key, String(val)],
+    }))
+    for (const stmt of statements) await req.db.execute(stmt)
+    await bumpVersion(req.db)
 
     res.json({ success: true })
   } catch (err) {

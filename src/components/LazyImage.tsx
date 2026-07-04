@@ -38,7 +38,7 @@ export default function LazyImage({ src, alt, className, imgStyle, loading = 'la
         <img
           src={src}
           alt=""
-          loading={loading}
+          loading="eager"
           onLoad={handleLoad}
           onError={handleLoad}
           style={{ display: 'none' }}

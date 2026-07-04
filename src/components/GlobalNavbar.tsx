@@ -1,65 +1,57 @@
 import { useEffect, useState } from 'react'
-import { fetchContent, fetchPages } from '../cms/api'
+import { fetchContentCached, fetchPagesCached } from '../cms/contentCache'
 import NavbarSection from '../sections/Navbar/index'
+
+function buildNavContent(contentData: Record<string, string>, pages: any[]): Record<string, string> {
+  const filtered: Record<string, string> = {}
+  Object.entries(contentData).forEach(([k, v]) => {
+    if (k.startsWith('nav_') || k.startsWith('_nav_')) filtered[k] = v
+  })
+
+  let items: Record<string, any>[] = []
+  try { if (filtered._nav_items) items = JSON.parse(filtered._nav_items) } catch {}
+
+  items.forEach((item) => { if (item.label === 'Home') item.href = '/' })
+
+  // Find or create "O Colégio" dropdown
+  let colegioItem = items.find((item: any) => item.label === 'O Colégio')
+  if (!colegioItem) {
+    colegioItem = { _id: 'nav_colegio_' + Date.now(), label: 'O Colégio', href: '', dropdown_items: '[]' }
+    const homeIdx = items.findIndex((i: any) => i.label === 'Home')
+    items.splice(homeIdx >= 0 ? homeIdx + 1 : items.length, 0, colegioItem)
+  }
+  if (colegioItem.is_dropdown !== 'true') colegioItem.is_dropdown = 'true'
+
+  const visiblePages = pages.filter((p: any) => p.show_in_menu && p.slug !== 'home')
+  let subItems: { label: string; href: string; external?: boolean }[] = []
+  try { if (colegioItem.dropdown_items) subItems = JSON.parse(colegioItem.dropdown_items) } catch {}
+  visiblePages.forEach((p: any) => {
+    const slug = p.slug.replace(/^\/+|\/+$/g, '')
+    if (!subItems.some((d: any) => d.href === '/' + slug)) subItems.push({ label: p.title, href: '/' + slug })
+  })
+  colegioItem.dropdown_items = JSON.stringify(subItems)
+
+  filtered._nav_items = JSON.stringify(items)
+  return filtered
+}
 
 export default function GlobalNavbar() {
   const [content, setContent] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    Promise.all([fetchContent(), fetchPages()]).then(([contentData, pages]) => {
-      const filtered: Record<string, string> = {}
-      Object.entries(contentData).forEach(([k, v]) => {
-        if (k.startsWith('nav_') || k.startsWith('_nav_')) {
-          filtered[k] = v
-        }
-      })
-
-      if (filtered._nav_items) {
-        try {
-          let items: Record<string, any>[] = JSON.parse(filtered._nav_items)
-
-          items.forEach((item) => {
-            if (item.label === 'Home') item.href = '/'
-          })
-
-          const visiblePages = (pages as any[]).filter(
-            (p: any) => p.show_in_menu && p.slug !== 'home'
-          )
-
-          if (visiblePages.length > 0) {
-            const dropdownItem = items.find(
-              (item: any) =>
-                item.label === 'O Colégio' ||
-                (item.is_dropdown === 'true' && item.dropdown_items)
-            )
-
-            if (dropdownItem) {
-              let subItems: { label: string; href: string }[] = []
-              try {
-                if (dropdownItem.dropdown_items)
-                  subItems = JSON.parse(dropdownItem.dropdown_items)
-              } catch {}
-
-              visiblePages.forEach((p: any) => {
-                const slug = p.slug.replace(/^\/+|\/+$/g, '')
-                const exists = subItems.some(
-                  (d: any) => d.href === '/' + slug
-                )
-                if (!exists) {
-                  subItems.push({ label: p.title, href: '/' + slug })
-                }
-              })
-
-              dropdownItem.dropdown_items = JSON.stringify(subItems)
-            }
-          }
-
-          filtered._nav_items = JSON.stringify(items)
-        } catch {}
-      }
-
-      setContent(filtered)
+    Promise.all([fetchContentCached(), fetchPagesCached()]).then(([{ data: contentData }, { data: pages }]) => {
+      setContent(buildNavContent(contentData, pages))
     }).catch(() => {})
+
+    const handler = (e: CustomEvent) => {
+      if (e.detail.key === 'global_content' || e.detail.key === 'pages') {
+        Promise.all([fetchContentCached(), fetchPagesCached()]).then(([{ data: contentData }, { data: pages }]) => {
+          setContent(buildNavContent(contentData, pages))
+        }).catch(() => {})
+      }
+    }
+    window.addEventListener('cms-cache-update', handler as EventListener)
+    return () => window.removeEventListener('cms-cache-update', handler as EventListener)
   }, [])
 
   return <NavbarSection content={content} />

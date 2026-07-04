@@ -16,16 +16,15 @@ console.log('[api/index.js] DATABASE_URL present:', !!process.env.DATABASE_URL)
 console.log('[api/index.js] DATABASE_AUTH_TOKEN present:', !!process.env.DATABASE_AUTH_TOKEN)
 
 let db = null
+let initPromise = null
 
 try {
   db = createDb()
   console.log('[api/index.js] createDb() OK, db type:', typeof db)
+  initPromise = initDb(db)
+  initPromise.then(() => console.log('[api/index.js] initDb() complete')).catch((e) => console.error('[api/index.js] initDb failed:', e.message))
 } catch (e) {
   console.error('[api/index.js] createDb FAILED:', e.message)
-}
-
-if (db) {
-  initDb(db).then(() => console.log('[api/index.js] initDb() complete')).catch((e) => console.error('[api/index.js] initDb failed:', e.message))
 }
 
 const app = express()
@@ -34,9 +33,21 @@ console.log('[api/index.js] Express app created')
 app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 
-app.use((req, _res, next) => {
+app.use(async (req, _res, next) => {
+  console.log('[index.js middleware] req.url:', req.url, 'initPromise:', !!initPromise)
   if (!db) {
+    console.error('[index.js middleware] db is null')
     return _res.status(500).json({ error: 'Database not initialized' })
+  }
+  if (initPromise) {
+    console.log('[index.js middleware] awaiting initPromise...')
+    try {
+      await initPromise
+      console.log('[index.js middleware] initPromise resolved')
+    } catch (e) {
+      console.error('[index.js middleware] initPromise REJECTED:', e.message)
+      return _res.status(500).json({ error: 'Database init failed: ' + e.message })
+    }
   }
   req.db = db
   next()

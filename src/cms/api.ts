@@ -5,6 +5,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api'
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 20000,
 })
 
 api.interceptors.request.use((config) => {
@@ -50,10 +51,12 @@ export async function fetchPages() {
   return data
 }
 
+function normSlug(s: string) { return s.replace(/^\/+|\/+$/g, '') }
+
 export async function fetchPageContent(slug: string): Promise<Record<string, string>> {
   console.log('[API] fetchPageContent slug:', slug)
   try {
-    const { data } = await api.get(`/pages/${slug}/content`)
+    const { data } = await api.get(`/pages/${normSlug(slug)}/content`)
     console.log('[API] fetchPageContent SUCCESS, keys:', Object.keys(data).length, 'has _sections:', !!data._sections)
     return data
   } catch (err) {
@@ -63,7 +66,7 @@ export async function fetchPageContent(slug: string): Promise<Record<string, str
 }
 
 export async function updatePageContent(slug: string, entries: Record<string, string>) {
-  await api.put(`/pages/${slug}/content/bulk`, { entries })
+  await api.put(`/pages/${normSlug(slug)}/content/bulk`, { entries })
 }
 
 // Images

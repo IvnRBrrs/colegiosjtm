@@ -16,93 +16,129 @@ export function createDb() {
   return client
 }
 
-export async function initDb(db) {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS content (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updated_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
+let _initPromise = null
 
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS pages (
-      slug TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      show_in_menu INTEGER DEFAULT 1,
-      parent_slug TEXT,
+export async function initDb(db) {
+  console.log('[db.js] initDb called, _initPromise:', !!_initPromise)
+  if (_initPromise) return _initPromise
+
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS content (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS pages (
+      slug TEXT PRIMARY KEY, title TEXT NOT NULL,
+      show_in_menu INTEGER DEFAULT 1, parent_slug TEXT,
       menu_order INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (parent_slug) REFERENCES pages(slug)
-    )
-  `)
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS page_content (
-      page_slug TEXT NOT NULL,
-      key TEXT NOT NULL,
+      FOREIGN KEY (parent_slug) REFERENCES pages(slug))`,
+    `CREATE TABLE IF NOT EXISTS page_content (
+      page_slug TEXT NOT NULL, key TEXT NOT NULL,
       value TEXT,
       PRIMARY KEY (page_slug, key),
-      FOREIGN KEY (page_slug) REFERENCES pages(slug)
-    )
-  `)
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS users (
+      FOREIGN KEY (page_slug) REFERENCES pages(slug))`,
+    `CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS images (
-      id TEXT PRIMARY KEY,
-      filename TEXT NOT NULL,
-      data TEXT NOT NULL,
-      type TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS images (
+      id TEXT PRIMARY KEY, filename TEXT NOT NULL,
+      data TEXT NOT NULL, type TEXT NOT NULL,
       component_type TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS content_backups (
+      created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS content_backups (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      section_key TEXT NOT NULL,
-      value TEXT NOT NULL,
+      section_key TEXT NOT NULL, value TEXT NOT NULL,
       version INTEGER NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS contact_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      phone TEXT,
-      message TEXT NOT NULL,
-      read INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS blog_posts (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      subtitle TEXT DEFAULT '',
-      content TEXT NOT NULL DEFAULT '',
-      author TEXT DEFAULT '',
-      date TEXT NOT NULL,
-      tags TEXT DEFAULT '[]',
-      images TEXT DEFAULT '[]',
-      videos TEXT DEFAULT '[]',
-      slug TEXT UNIQUE,
+      created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS blog_posts (
+      id TEXT PRIMARY KEY, title TEXT NOT NULL,
+      subtitle TEXT DEFAULT '', content TEXT NOT NULL DEFAULT '',
+      author TEXT DEFAULT '', date TEXT NOT NULL,
+      tags TEXT DEFAULT '[]', images TEXT DEFAULT '[]',
+      videos TEXT DEFAULT '[]', slug TEXT UNIQUE,
       published INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `)
+      created_at TEXT DEFAULT (datetime('now')))`,
+  ]
+
+  console.log('[db.js] Starting sequential CREATE TABLEs...')
+  _initPromise = (async () => {
+    for (const sql of tables) await db.execute(sql)
+  })()
+  try {
+    await _initPromise
+    console.log('[db.js] All CREATE TABLEs done')
+  } catch (e) {
+    console.error('[db.js] CREATE TABLEs FAILED:', e.message)
+    _initPromise = null
+    throw e
+  }
+
+  console.log('[db.js] Inserting _content_version...')
+  try {
+    await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_content_version', '1')`)
+    console.log('[db.js] _content_version OK')
+  } catch (e) {
+    console.error('[db.js] _content_version FAILED:', e.message)
+  }
+
+  console.log('[db.js] Trimming slugs...')
+  try {
+    const r1 = await db.execute(`UPDATE pages SET slug = TRIM(slug, '/') WHERE slug LIKE '/%' OR slug LIKE '%/'`)
+    const r2 = await db.execute(`UPDATE page_content SET page_slug = TRIM(page_slug, '/') WHERE page_slug LIKE '/%' OR page_slug LIKE '%/'`)
+    const affected = (r1.rowsAffected || 0) + (r2.rowsAffected || 0)
+    if (affected > 0) {
+      await db.execute(`UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`)
+    }
+    console.log('[db.js] Slugs trimmed, affected:', affected)
+  } catch (e) {
+    console.error('[db.js] Slug trim FAILED:', e.message)
+  }
+
+  console.log('[db.js] Replacing nav Contato with Login...')
+  try {
+    const navResult = await db.execute(`SELECT value FROM content WHERE key = '_nav_items'`)
+    if (navResult.rows.length > 0) {
+      const raw = navResult.rows[0].value
+      let items = []
+      try { items = JSON.parse(raw) } catch {}
+      let changed = false
+      items.forEach((item) => {
+        if (item.label === 'Contato') { item.label = 'Login'; item.href = '/admin/login'; changed = true }
+      })
+      if (changed) {
+        await db.execute({ sql: `UPDATE content SET value = ? WHERE key = '_nav_items'`, args: [JSON.stringify(items)] })
+        await db.execute(`UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`)
+        console.log('[db.js] Nav Contato → Login updated, version bumped')
+      } else {
+        console.log('[db.js] Nav already has Login, skipping')
+      }
+    }
+  } catch (e) {
+    console.error('[db.js] Nav Contato→Login FAILED:', e.message)
+  }
+
+  console.log('[db.js] Ensuring home page has _sections...')
+  try {
+    await db.execute(`INSERT OR IGNORE INTO pages (slug, title) VALUES ('home', 'Home')`)
+    const homeSections = JSON.stringify([
+      { title: 'Hero', instanceId: 'hero' },
+      { title: 'Sobre', instanceId: 'sobre' },
+      { title: 'Segmentos', instanceId: 'segmentos' },
+      { title: 'Galeria', instanceId: 'galeria' },
+      { title: 'Depoimentos', instanceId: 'depoimentos' },
+      { title: 'FAQ', instanceId: 'faq' },
+      { title: 'Contato', instanceId: 'contato' },
+      { title: 'Mapa', instanceId: 'mapa' },
+      { title: 'Blog', instanceId: 'blog' },
+    ])
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO page_content (page_slug, key, value) VALUES ('home', '_sections', ?)`,
+      args: [homeSections],
+    })
+    console.log('[db.js] Home page _sections seeded OK')
+  } catch (e) {
+    console.error('[db.js] Home page _sections seeding FAILED:', e.message)
+  }
 }

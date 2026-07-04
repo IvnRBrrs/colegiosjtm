@@ -9,6 +9,7 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<Record<string, any>>({
     title: '', subtitle: '', content: '', author: '', date: new Date().toISOString().split('T')[0],
     tags: '', images: '[]', videos: '[]', published: true,
@@ -31,6 +32,7 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
   const resetForm = () => {
     setForm({ title: '', subtitle: '', content: '', author: '', date: new Date().toISOString().split('T')[0], tags: '', images: '[]', videos: '[]', published: true })
     setEditingId(null)
+    setShowForm(false)
   }
 
   const editPost = async (id: string) => {
@@ -48,6 +50,7 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
         published: post.published === 1 || post.published === true,
       })
       setEditingId(id)
+      setShowForm(true)
     } catch {}
   }
 
@@ -194,12 +197,12 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
             placeholder="Buscar posts..."
             style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.85rem' }}
           />
-          {!editingId && (
-            <button className="btn btn-sm btn-primary" onClick={resetForm}>+ Novo Post</button>
+          {!editingId && !showForm && (
+            <button className="btn btn-sm btn-primary" onClick={() => { resetForm(); setShowForm(true) }}>+ Novo Post</button>
           )}
         </div>
 
-        {(editingId || form.title) && (
+        {showForm && (
           <div className="admin-list-item" style={{ padding: 16, marginBottom: 16, background: '#f8f9fa', borderRadius: 8 }}>
             <h5 style={{ margin: '0 0 12px', color: 'var(--primary)' }}>{editingId ? 'Editar Post' : 'Novo Post'}</h5>
             <div className="admin-field">

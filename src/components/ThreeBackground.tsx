@@ -2,7 +2,21 @@ import { useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-function Particles({ count = 80 }: { count?: number }) {
+function getQuality(): 'low' | 'medium' | 'high' {
+  if (typeof window === 'undefined') return 'medium'
+  const mem = (navigator as any).deviceMemory
+  const cpu = navigator.hardwareConcurrency
+  const mobile = window.innerWidth < 768
+  if ((mem !== undefined && mem < 4) || (cpu !== undefined && cpu < 4) || mobile) return 'low'
+  if ((mem !== undefined && mem < 8) || (cpu !== undefined && cpu < 8)) return 'medium'
+  return 'high'
+}
+
+const Q = getQuality()
+const PARTICLE_COUNT = Q === 'low' ? 25 : Q === 'medium' ? 50 : 80
+const SHAPE_COUNT = Q === 'low' ? 4 : Q === 'medium' ? 8 : 12
+
+function Particles({ count = PARTICLE_COUNT }: { count?: number }) {
   const ref = useRef<THREE.Points>(null!)
 
   const [positions, sizes] = useMemo(() => {
@@ -49,7 +63,7 @@ function FloatingShapes() {
     const items: { pos: [number, number, number]; rotSpeed: number; shape: 'tetrahedron' | 'octahedron' | 'dodecahedron'; size: number; color: string }[] = []
     const colors = ['#09346A', '#153D8A', '#06244A', '#F4F084']
     const geomTypes = ['tetrahedron', 'octahedron', 'dodecahedron'] as const
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < SHAPE_COUNT; i++) {
       items.push({
         pos: [
           (Math.random() - 0.5) * 30,
@@ -114,12 +128,13 @@ function Scene() {
 }
 
 export default function ThreeBackground() {
+  if (Q === 'low') return null
   return (
     <div className="three-bg">
       <Canvas
         camera={{ position: [0, 2, 18], fov: 50 }}
-        dpr={[1, 1.5]}
-        gl={{ antialias: true, alpha: true }}
+        dpr={[1, Q === 'high' ? 1.5 : 1]}
+        gl={{ antialias: Q === 'high', alpha: true, powerPreference: 'low-power' }}
         onCreated={({ gl }) => { gl.xr.enabled = false }}
       >
         <Scene />
