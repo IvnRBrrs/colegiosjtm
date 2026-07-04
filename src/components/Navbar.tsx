@@ -27,7 +27,7 @@ const menuItems: MenuItem[] = [
     ],
   },
   { label: 'Blog', href: '#blog' },
-  { label: 'Contato', href: '#contact' },
+  { label: 'Login', href: '/admin/login' },
 ]
 
 export default function Navbar() {

@@ -160,7 +160,7 @@ router.post('/content', async (req, res) => {
         { _id: '1', label: 'Home', href: '#hero' },
         { _id: '2', label: 'O Colégio', dropdown_items: JSON.stringify([{ label: 'Nossa História', href: '#historia' }, { label: 'Anos Iniciais', href: '#segmentos' }, { label: 'Anos Finais', href: '#segmentos' }, { label: 'Ensino Médio', href: '#segmentos' }]) },
         { _id: '3', label: 'Links', dropdown_items: JSON.stringify([{ label: 'Activesoft', href: 'https://siga03.activesoft.com.br/login/?instituicao=SAOJUDAS', external: true }, { label: 'Área do Aluno', href: 'http://drive.google.com/drive/folders/0AIjBGxYgeUOYUk9PVA', external: true }, { label: 'Portal SAE', href: 'https://app.sae.digital/entrar/', external: true }]) },
-        { _id: '4', label: 'Contato', href: '#contact' },
+        { _id: '4', label: 'Login', href: '/admin/login' },
       ]),
       color_primary: '#09346A',
       color_primary_dark: '#06244A',

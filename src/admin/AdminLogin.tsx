@@ -8,7 +8,7 @@ interface AdminLoginProps {
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
   const [mode, setMode] = useState<'login' | 'setup'>('login')
-  const [username, setUsername] = useState('admin')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -67,10 +67,15 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               </button>
             </form>
             <p style={{ marginTop: 16, textAlign: 'center', fontSize: '0.85rem' }}>
+              <button onClick={() => window.location.href = '/'} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
+                Voltar ao Site
+              </button>
+            </p>
+            {/* <p style={{ marginTop: 16, textAlign: 'center', fontSize: '0.85rem' }}>
               <button onClick={() => { setMode('setup'); setError('') }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
                 Primeiro acesso? Criar usuário admin
               </button>
-            </p>
+            </p> */}
           </>
         ) : (
           <>

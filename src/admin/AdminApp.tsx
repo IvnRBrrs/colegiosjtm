@@ -13,7 +13,7 @@ export default function AdminApp() {
       api.get('/messages').then(({ data }) => {
         const unread = data.filter((m: any) => !m.read).length
         setUnreadMessages(unread)
-      }).catch(() => {})
+      }).catch(() => { })
     }
   }, [token])
 
@@ -69,7 +69,7 @@ export default function AdminApp() {
   return (
     <div className="admin-wrapper">
       <aside className="admin-sidebar">
-        <h2>CMS</h2>
+        <h2>Administrativo</h2>
         <nav>
           <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</button>
           <button className={view === 'pages' ? 'active' : ''} onClick={() => setView('pages')}>Páginas</button>
@@ -95,7 +95,7 @@ function MessagesList() {
   const [messages, setMessages] = useState<any[]>([])
 
   useEffect(() => {
-    api.get('/messages').then(({ data }) => setMessages(data)).catch(() => {})
+    api.get('/messages').then(({ data }) => setMessages(data)).catch(() => { })
   }, [])
 
   const markRead = async (id: number) => {

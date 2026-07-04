@@ -28,7 +28,7 @@ export default function PageManager() {
   const createPage = async () => {
     if (!newTitle || !newSlug) return
     try {
-      await api.post('/pages', { title: newTitle, slug: newSlug })
+      await api.post('/pages', { title: newTitle, slug: newSlug.replace(/^\/+|\/+$/g, '') })
       setNewTitle('')
       setNewSlug('')
       loadPages()
@@ -38,7 +38,7 @@ export default function PageManager() {
   const deletePage = async (slug: string) => {
     if (!confirm(`Deletar página "${slug}"?`)) return
     try {
-      await api.delete(`/pages/${slug}`)
+      await api.delete(`/pages/${slug.replace(/^\/+|\/+$/g, '')}`)
       loadPages()
       if (editingSlug === slug) setEditingSlug(null)
     } catch (err) { console.error(err) }
@@ -46,7 +46,7 @@ export default function PageManager() {
 
   const toggleMenuVisibility = async (page: Page) => {
     try {
-      await api.put(`/pages/${page.slug}`, { show_in_menu: page.show_in_menu ? 0 : 1 })
+      await api.put(`/pages/${page.slug.replace(/^\/+|\/+$/g, '')}`, { show_in_menu: page.show_in_menu ? 0 : 1 })
       loadPages()
     } catch (err) { console.error(err) }
   }
@@ -119,7 +119,7 @@ function PageEditor({ slug, onBack, onSaved }: { slug: string; onBack: () => voi
   const allSectionTitles = getAllSectionTitles()
 
   useEffect(() => {
-    api.get(`/pages/${slug}/content`).then(({ data }) => {
+    api.get(`/pages/${slug.replace(/^\/+|\/+$/g, '')}/content`).then(({ data }) => {
       setPageContent(data)
       try {
         if (data._sections) {
@@ -182,13 +182,25 @@ function PageEditor({ slug, onBack, onSaved }: { slug: string; onBack: () => voi
   const saveAll = async () => {
     setSaving(true)
     try {
-      const entries = { ...pageContent, _sections: JSON.stringify(sections) }
-      await api.put(`/pages/${slug}/content/bulk`, { entries })
+      const sectionKeys: Record<string, string> = {}
+      sections.forEach((sec) => {
+        const mod = getModularSection(sec.title)
+        if (mod) {
+          mod.schema.keys.forEach((k) => {
+            if (pageContent[k.key] !== undefined) sectionKeys[k.key] = pageContent[k.key]
+          })
+          if (mod.schema.listKey && pageContent[mod.schema.listKey] !== undefined) {
+            sectionKeys[mod.schema.listKey] = pageContent[mod.schema.listKey]
+          }
+        }
+      })
+      sectionKeys._sections = JSON.stringify(sections)
+      await api.put(`/pages/${slug.replace(/^\/+|\/+$/g, '')}/content/bulk`, { entries: sectionKeys })
       onSaved()
       alert('Página salva!')
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'desconhecido'))
+      alert('Erro ao salvar: ' + (err.response?.data?.error || err.message || 'desconhecido'))
     } finally { setSaving(false) }
   }
 

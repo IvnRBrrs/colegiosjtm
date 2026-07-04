@@ -3,6 +3,10 @@ import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
+async function bumpVersion(db) {
+  await db.execute(`UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`)
+}
+
 router.get('/', async (req, res) => {
   try {
     const result = await req.db.execute(`
@@ -40,11 +44,14 @@ router.get('/', async (req, res) => {
   }
 })
 
+function normSlug(s) { return (s || '').replace(/^\/+|\/+$/g, '') }
+
 router.get('/:slug', async (req, res) => {
+  const slug = normSlug(req.params.slug)
   try {
     const result = await req.db.execute({
       sql: 'SELECT * FROM pages WHERE slug = ?',
-      args: [req.params.slug],
+      args: [slug],
     })
 
     if (result.rows.length === 0) {
@@ -54,7 +61,7 @@ router.get('/:slug', async (req, res) => {
     const page = result.rows[0]
     const contentResult = await req.db.execute({
       sql: 'SELECT key, value FROM page_content WHERE page_slug = ?',
-      args: [req.params.slug],
+      args: [slug],
     })
 
     const content = {}
@@ -82,7 +89,8 @@ router.get('/:slug', async (req, res) => {
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { slug, title, show_in_menu, parent_slug, menu_order, content } = req.body
+    let slug = (req.body.slug || '').replace(/^\/+|\/+$/g, '')
+    const { title, show_in_menu, parent_slug, menu_order, content } = req.body
     if (!slug || !title) return res.status(400).json({ error: 'slug and title are required' })
 
     await req.db.execute({
@@ -100,17 +108,18 @@ router.post('/', authMiddleware, async (req, res) => {
       ],
     })
 
+    const statements = []
     if (content) {
-      for (const [key, value] of Object.entries(content)) {
-        const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
-        await req.db.execute({
+      Object.entries(content).forEach(([key, value]) => {
+        statements.push({
           sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
                 ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
-          args: [slug, key, stringValue],
+          args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
         })
-      }
+      })
     }
-
+    for (const stmt of statements) await req.db.execute(stmt)
+    await bumpVersion(req.db)
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -118,74 +127,81 @@ router.post('/', authMiddleware, async (req, res) => {
 })
 
 router.get('/:slug/content', async (req, res) => {
+  const slug = normSlug(req.params.slug)
   try {
-    // Fetch global content (raw string values, no JSON parse)
-    const globalResult = await req.db.execute('SELECT key, value FROM content')
-    const content = {}
-    for (const row of globalResult.rows) {
-      content[row.key] = row.value
+    const pageExists = await req.db.execute({ sql: 'SELECT 1 FROM pages WHERE slug = ?', args: [slug] })
+    if (pageExists.rows.length === 0) {
+      return res.status(404).json({ error: 'Page not found' })
     }
-    // Fetch page-specific content (overrides global)
-    const pageResult = await req.db.execute({
-      sql: 'SELECT key, value FROM page_content WHERE page_slug = ?',
-      args: [req.params.slug],
+    const result = await req.db.execute({
+      sql: `SELECT key, value FROM content
+            UNION ALL
+            SELECT key, value FROM page_content WHERE page_slug = ?`,
+      args: [slug],
     })
-    for (const row of pageResult.rows) {
+    const content = {}
+    for (const row of result.rows) {
       content[row.key] = row.value
     }
     res.json(content)
   } catch (err) {
+    console.error('[pages.js] ERROR for slug:', slug, err)
     res.status(500).json({ error: String(err) })
   }
 })
 
 router.put('/:slug/content', authMiddleware, async (req, res) => {
+  const slug = normSlug(req.params.slug)
   try {
     const entries = req.body
-    for (const [key, value] of Object.entries(entries)) {
-      const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
-      await req.db.execute({
-        sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
-              ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
-        args: [req.params.slug, key, stringValue],
-      })
-    }
+    const statements = Object.entries(entries).map(([key, value]) => ({
+      sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
+            ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
+      args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
+    }))
+    for (const stmt of statements) await req.db.execute(stmt)
+    await bumpVersion(req.db)
     res.json({ success: true })
   } catch (err) {
+    console.error('[pages.js] PUT /:slug/content ERROR:', err)
     res.status(500).json({ error: String(err) })
   }
 })
 
 router.put('/:slug/content/bulk', authMiddleware, async (req, res) => {
+  const slug = normSlug(req.params.slug)
   try {
     const { entries } = req.body
     if (!entries) return res.status(400).json({ error: 'Entries required' })
-    for (const [key, value] of Object.entries(entries)) {
-      const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
-      await req.db.execute({
-        sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
-              ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
-        args: [req.params.slug, key, stringValue],
-      })
-    }
+    const statements = Object.entries(entries).map(([key, value]) => ({
+      sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
+            ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
+      args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
+    }))
+    for (const stmt of statements) await req.db.execute(stmt)
+    await bumpVersion(req.db)
     res.json({ success: true })
   } catch (err) {
+    console.error('[pages.js] PUT /:slug/content/bulk ERROR:', err)
     res.status(500).json({ error: String(err) })
   }
 })
 
 router.delete('/:slug', authMiddleware, async (req, res) => {
+  const slug = normSlug(req.params.slug)
   try {
     await req.db.execute({
       sql: 'DELETE FROM page_content WHERE page_slug = ?',
-      args: [req.params.slug],
+      args: [slug],
     })
     await req.db.execute({
       sql: 'DELETE FROM pages WHERE slug = ?',
-      args: [req.params.slug],
+      args: [slug],
     })
+    await bumpVersion(req.db)
     res.json({ success: true })
   } catch (err) {
+    console.error('[pages.js] DELETE /:slug ERROR:', err)
     res.status(500).json({ error: String(err) })
   }
 })

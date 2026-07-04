@@ -18,25 +18,27 @@ interface PageBuilderProps {
   sections: { title: string; instanceId?: string; content: Record<string, string> }[]
 }
 
+function SectionRenderer({ section }: { section: { title: string; instanceId?: string; content: Record<string, string> } }) {
+  const mod = getModularSection(section.title)
+  const content = useMemo(
+    () => createContentProxy(section.content, section.instanceId),
+    [section.content, section.instanceId]
+  )
+  if (!mod) {
+    console.warn('[PageBuilder] Section not found in registry:', section.title)
+    return null
+  }
+  const SectionComponent = mod.Component
+  return <SectionComponent content={content} instanceId={section.instanceId} />
+}
+
 export default function PageBuilder({ sections }: PageBuilderProps) {
   console.log('[PageBuilder] Rendering sections:', sections.length, sections.map(s => s.title).join(', '))
   return (
     <>
-      {sections.map((section, i) => {
-        const mod = getModularSection(section.title)
-        if (!mod) {
-          console.warn('[PageBuilder] Section not found in registry:', section.title)
-          return null
-        }
-
-        const SectionComponent = mod.Component
-        const content = useMemo(
-          () => createContentProxy(section.content, section.instanceId),
-          [section.content, section.instanceId]
-        )
-
-        return <SectionComponent key={section.instanceId || section.title + i} content={content} instanceId={section.instanceId} />
-      })}
+      {sections.map((section, i) => (
+        <SectionRenderer key={section.instanceId || section.title + i} section={section} />
+      ))}
     </>
   )
 }

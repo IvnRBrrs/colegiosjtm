@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchBlogPosts, fetchBlogTags, fetchBlogAuthors, fetchBlogArchive } from '../../cms/api'
+import LazyImage from '../../components/LazyImage'
 
 interface BlogProps {
   content: Record<string, string>
@@ -131,7 +132,7 @@ export default function Blog({ content }: BlogProps) {
             {images.length > 0 && (
               <div className="blog-post-images">
                 {images.length === 1 ? (
-                  <img src={images[0].url} alt={images[0].alt || selectedPost.title} className="blog-post-img" />
+                  <LazyImage src={images[0].url} alt={images[0].alt || selectedPost.title} className="blog-post-img" />
                 ) : (
                   <div className="blog-carousel"
                     onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
@@ -150,7 +151,7 @@ export default function Blog({ content }: BlogProps) {
                     <div className="blog-carousel-viewport">
                       {images.map((img, i) => (
                         <div key={i} className={`blog-carousel-slide ${i === currentImage ? 'active' : ''}`}>
-                          <img src={img.url} alt={img.alt || `Imagem ${i + 1}`} className="blog-carousel-img" loading={i === 0 ? 'eager' : 'lazy'} />
+                          <LazyImage src={img.url} alt={img.alt || `Imagem ${i + 1}`} className="blog-carousel-img" loading={i === 0 ? 'eager' : 'lazy'} />
                         </div>
                       ))}
                     </div>
@@ -307,7 +308,7 @@ export default function Blog({ content }: BlogProps) {
                       <div key={post.id} className="blog-card" onClick={() => openPost(post.id)}>
                         {images.length > 0 && (
                           <div className="blog-card-img-wrapper">
-                            <img src={images[0].url} alt={post.title} className="blog-card-img" loading="lazy" />
+                            <LazyImage src={images[0].url} alt={post.title} className="blog-card-img" />
                           </div>
                         )}
                         <div className="blog-card-body">

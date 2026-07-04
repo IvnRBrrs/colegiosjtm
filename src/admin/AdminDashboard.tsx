@@ -11,7 +11,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages }: AdminDash
   const [previewContent, setPreviewContent] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    fetchContent().then(setPreviewContent).catch(() => {})
+    fetchContent().then(setPreviewContent).catch(() => { })
   }, [])
 
   const sectionTitles = getAllSectionTitles()
@@ -20,7 +20,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages }: AdminDash
     <div className="admin-dashboard">
       <div className="admin-dashboard-header">
         <h2>Painel de Controle</h2>
-        <p>Bem-vindo ao CMS do Colégio São Judas Tadeu.</p>
+        <p>Bem-vindo ao Colégio São Judas Tadeu.</p>
       </div>
 
       <div className="admin-cards">
