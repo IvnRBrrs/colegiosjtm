@@ -133,26 +133,17 @@ router.get('/:slug/content', async (req, res) => {
     if (pageExists.rows.length === 0) {
       return res.status(404).json({ error: 'Page not found' })
     }
-    const [globalResult, pageResult] = await Promise.all([
-      req.db.execute('SELECT key, value FROM content'),
-      req.db.execute({
-        sql: 'SELECT key, value FROM page_content WHERE page_slug = ?',
-        args: [slug],
-      }),
-    ])
-    console.log('[pages.js] Promise.all done, global rows:', globalResult.rows.length, 'page rows:', pageResult.rows.length)
+    const result = await req.db.execute({
+      sql: `SELECT key, value FROM content
+            UNION ALL
+            SELECT key, value FROM page_content WHERE page_slug = ?`,
+      args: [slug],
+    })
     const content = {}
-    for (const row of globalResult.rows) {
+    for (const row of result.rows) {
       content[row.key] = row.value
     }
-    for (const row of pageResult.rows) {
-      content[row.key] = row.value
-    }
-    console.log('[pages.js] Content keys:', Object.keys(content).length, 'has _sections:', !!content._sections)
-
-    console.log('[pages.js] Sending response for slug:', slug)
     res.json(content)
-    console.log('[pages.js] Response sent for slug:', slug)
   } catch (err) {
     console.error('[pages.js] ERROR for slug:', slug, err)
     res.status(500).json({ error: String(err) })
