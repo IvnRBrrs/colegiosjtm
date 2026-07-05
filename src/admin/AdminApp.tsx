@@ -105,7 +105,7 @@ export default function AdminApp() {
             <button className={view === 'messages' ? 'active' : ''} onClick={() => setView('messages')}>Mensagens {unreadMessages > 0 && `(${unreadMessages})`}</button>
           ) : null}
           {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'historico_alunos' ? 'active' : ''} onClick={() => setView('historico_alunos')}>Histórico de Alunos</button>
+            <button className={view === 'historico_alunos' ? 'active' : ''} onClick={() => setView('historico_alunos')}>Cadastro de Alunos</button>
           ) : null}
           <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários</button>
           {role === ROLES.SUPER_ADMIN ? (

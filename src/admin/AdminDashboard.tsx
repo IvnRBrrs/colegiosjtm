@@ -78,7 +78,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
           <div className="admin-card" onClick={() => onNavigate('historico_alunos')}>
             <div className="admin-card-icon">📋</div>
             <div className="admin-card-info">
-              <h3>Histórico de Alunos</h3>
+              <h3>Cadastro de Alunos</h3>
               <p>Gerenciar registros de alunos</p>
             </div>
           </div>
