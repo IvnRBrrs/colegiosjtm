@@ -1,15 +1,16 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import { createDb, initDb } from './db.js'
-import authRoutes from './routes/auth.js'
-import contentRoutes from './routes/content.js'
-import pagesRoutes from './routes/pages.js'
-import imagesRoutes from './routes/images.js'
-import messagesRoutes from './routes/messages.js'
-import backupsRoutes from './routes/backups.js'
-import seedRoutes from './routes/seed.js'
-import blogRoutes from './routes/blog.js'
+import { createDb, initDb } from '../_backend/db.js'
+import authRoutes from '../_backend/routes/auth.js'
+import contentRoutes from '../_backend/routes/content.js'
+import pagesRoutes from '../_backend/routes/pages.js'
+import imagesRoutes from '../_backend/routes/images.js'
+import messagesRoutes from '../_backend/routes/messages.js'
+import backupsRoutes from '../_backend/routes/backups.js'
+import seedRoutes from '../_backend/routes/seed.js'
+import blogRoutes from '../_backend/routes/blog.js'
+import historicoAlunosRoutes from '../_backend/routes/historico_alunos.js'
 
 console.log('[api/index.js] Starting module load...')
 console.log('[api/index.js] DATABASE_URL present:', !!process.env.DATABASE_URL)
@@ -61,6 +62,7 @@ app.use('/api/messages', messagesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/blog', blogRoutes)
+app.use('/api/historico-alunos', historicoAlunosRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err)

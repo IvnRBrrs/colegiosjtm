@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, requireRole } from '../middleware/auth.js'
+import { ROLES } from '../roles.js'
 import { rowsToObjects } from '../rows.js'
 import crypto from 'crypto'
 
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-router.post('/upload', authMiddleware, async (req, res) => {
+router.post('/upload', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     const { filename, data, type, component_type } = req.body
     if (!filename || !data || !type) {
@@ -33,7 +34,7 @@ router.post('/upload', authMiddleware, async (req, res) => {
   }
 })
 
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'DELETE FROM images WHERE id = ?',

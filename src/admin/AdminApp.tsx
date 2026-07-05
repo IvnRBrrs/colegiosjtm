@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react'
 import api from '../cms/api'
-import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore } from './index'
+import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos } from './index'
+import { getRoleFromToken, getUsernameFromToken, ROLES } from '../cms/auth'
+import ChangePasswordModal from './ChangePasswordModal'
 
 export default function AdminApp() {
   const [token, setToken] = useState(localStorage.getItem('cms_token'))
+  const [role, setRole] = useState(() => getRoleFromToken())
   const [view, setView] = useState('dashboard')
   const [sectionTitle, setSectionTitle] = useState('')
   const [unreadMessages, setUnreadMessages] = useState(0)
+  const [mustChangePassword, setMustChangePassword] = useState(false)
 
   useEffect(() => {
     if (token) {
@@ -17,14 +21,26 @@ export default function AdminApp() {
     }
   }, [token])
 
-  const handleLogin = (newToken: string) => {
+  const handleLogin = (newToken: string, needChangePassword?: boolean) => {
     setToken(newToken)
+    setRole(getRoleFromToken())
+    setMustChangePassword(!!needChangePassword)
+    setView('dashboard')
+  }
+
+  const handlePasswordChanged = (newToken: string) => {
+    localStorage.setItem('cms_token', newToken)
+    setToken(newToken)
+    setRole(getRoleFromToken())
+    setMustChangePassword(false)
     setView('dashboard')
   }
 
   const handleLogout = () => {
     localStorage.removeItem('cms_token')
     setToken(null)
+    setRole(null)
+    setMustChangePassword(false)
     setView('dashboard')
   }
 
@@ -48,7 +64,7 @@ export default function AdminApp() {
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} />
+        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} role={role} />
       case 'section':
         return <SectionEditor sectionTitle={sectionTitle} onBack={() => setView('dashboard')} />
       case 'pages':
@@ -61,23 +77,43 @@ export default function AdminApp() {
         return <BackupRestore />
       case 'setup':
         return <SetupForm />
+      case 'users':
+        return <UserManager currentUsername={getUsernameFromToken() || ''} />
+      case 'historico_alunos':
+        return <HistoricoAlunos />
       default:
-        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} />
+        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} role={role} />
     }
   }
 
   return (
     <div className="admin-wrapper">
       <aside className="admin-sidebar">
-        <h2>Administrativo</h2>
+        <h2>Olá {getUsernameFromToken() || 'Usuário'}</h2>
         <nav>
           <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</button>
-          <button className={view === 'pages' ? 'active' : ''} onClick={() => setView('pages')}>Páginas</button>
-          <button className={view === 'section' && sectionTitle === 'Blog' ? 'active' : ''} onClick={() => handleNavigate('section', 'Blog')}>Blog</button>
-          <button className={view === 'images' ? 'active' : ''} onClick={() => setView('images')}>Imagens</button>
-          <button className={view === 'messages' ? 'active' : ''} onClick={() => setView('messages')}>Mensagens {unreadMessages > 0 && `(${unreadMessages})`}</button>
-          <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>
-          <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>Setup</button>
+          {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN ? (
+            <button className={view === 'pages' ? 'active' : ''} onClick={() => setView('pages')}>Páginas</button>
+          ) : null}
+          {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN || role === ROLES.EDITOR_BLOG ? (
+            <button className={view === 'section' && sectionTitle === 'Blog' ? 'active' : ''} onClick={() => handleNavigate('section', 'Blog')}>Blog</button>
+          ) : null}
+          {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN ? (
+            <button className={view === 'images' ? 'active' : ''} onClick={() => setView('images')}>Imagens</button>
+          ) : null}
+          {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN ? (
+            <button className={view === 'messages' ? 'active' : ''} onClick={() => setView('messages')}>Mensagens {unreadMessages > 0 && `(${unreadMessages})`}</button>
+          ) : null}
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
+            <button className={view === 'historico_alunos' ? 'active' : ''} onClick={() => setView('historico_alunos')}>Histórico de Alunos</button>
+          ) : null}
+          <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários</button>
+          {role === ROLES.SUPER_ADMIN ? (
+            <>
+              <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>
+              <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>Setup</button>
+            </>
+          ) : null}
         </nav>
         <div className="admin-sidebar-bottom">
           <a href="/" target="_blank" rel="noopener noreferrer">Ver Site</a>
@@ -87,6 +123,13 @@ export default function AdminApp() {
       <main className="admin-main">
         {renderView()}
       </main>
+
+      {mustChangePassword && (
+        <ChangePasswordModal
+          onSuccess={handlePasswordChanged}
+          onLogout={handleLogout}
+        />
+      )}
     </div>
   )
 }

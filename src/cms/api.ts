@@ -134,9 +134,9 @@ export async function fetchBlogArchive() {
 }
 
 // Auth
-export async function login(username: string, password: string): Promise<string> {
+export async function login(username: string, password: string): Promise<{ token: string; role: string; mustChangePassword: boolean }> {
   const { data } = await api.post('/auth/login', { username, password })
-  return data.token
+  return { token: data.token, role: data.role, mustChangePassword: data.mustChangePassword }
 }
 
 // Backups

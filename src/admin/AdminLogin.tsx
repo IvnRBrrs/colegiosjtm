@@ -3,7 +3,7 @@ import { login } from '../cms/api'
 import api from '../cms/api'
 
 interface AdminLoginProps {
-  onLogin: (token: string) => void
+  onLogin: (token: string, mustChangePassword?: boolean) => void
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
@@ -19,9 +19,9 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     setError('')
     setLoading(true)
     try {
-      const token = await login(username, password)
-      localStorage.setItem('cms_token', token)
-      onLogin(token)
+      const res = await login(username, password)
+      localStorage.setItem('cms_token', res.token)
+      onLogin(res.token, res.mustChangePassword)
     } catch {
       setError('Credenciais inválidas')
     } finally {

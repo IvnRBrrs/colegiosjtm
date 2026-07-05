@@ -1,10 +1,11 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, requireRole } from '../middleware/auth.js'
+import { ROLES } from '../roles.js'
 import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
-router.get('/:sectionKey', async (req, res) => {
+router.get('/:sectionKey', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
   try {
     const result = await req.db.execute({
       sql: 'SELECT * FROM content_backups WHERE section_key = ? ORDER BY version DESC LIMIT 6',
@@ -16,7 +17,7 @@ router.get('/:sectionKey', async (req, res) => {
   }
 })
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
   try {
     const { section_key, value } = req.body
     if (!section_key || !value) {
@@ -40,7 +41,7 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 })
 
-router.post('/restore', authMiddleware, async (req, res) => {
+router.post('/restore', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
   try {
     const { section_key, version } = req.body
     const result = await req.db.execute({
