@@ -1,10 +1,11 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, requireRole } from '../middleware/auth.js'
+import { ROLES } from '../roles.js'
 import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     const result = await req.db.execute('SELECT * FROM contact_messages ORDER BY created_at DESC')
     res.json(rowsToObjects(result.rows, result.columns))
@@ -31,7 +32,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.put('/:id/read', authMiddleware, async (req, res) => {
+router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'UPDATE contact_messages SET read = 1 WHERE id = ?',
@@ -43,7 +44,7 @@ router.put('/:id/read', authMiddleware, async (req, res) => {
   }
 })
 
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'DELETE FROM contact_messages WHERE id = ?',

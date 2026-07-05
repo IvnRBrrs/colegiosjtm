@@ -10,6 +10,7 @@ import messagesRoutes from './routes/messages.js'
 import backupsRoutes from './routes/backups.js'
 import seedRoutes from './routes/seed.js'
 import blogRoutes from './routes/blog.js'
+import historicoAlunosRoutes from './routes/historico_alunos.js'
 
 console.log('[api/index.js] Starting module load...')
 console.log('[api/index.js] DATABASE_URL present:', !!process.env.DATABASE_URL)
@@ -61,6 +62,7 @@ app.use('/api/messages', messagesRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/blog', blogRoutes)
+app.use('/api/historico-alunos', historicoAlunosRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err)

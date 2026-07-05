@@ -1,4 +1,5 @@
 import { createClient } from '@tursodatabase/serverless/compat'
+import bcrypt from 'bcryptjs'
 
 export function createDb() {
   const url = process.env.DATABASE_URL
@@ -52,6 +53,11 @@ export async function initDb(db) {
       section_key TEXT NOT NULL, value TEXT NOT NULL,
       version INTEGER NOT NULL,
       created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS historico_alunos (
+      id TEXT PRIMARY KEY,
+      aluno_nome TEXT NOT NULL,
+      data TEXT DEFAULT (datetime('now')),
+      created_at TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS blog_posts (
       id TEXT PRIMARY KEY, title TEXT NOT NULL,
       subtitle TEXT DEFAULT '', content TEXT NOT NULL DEFAULT '',
@@ -73,6 +79,38 @@ export async function initDb(db) {
     console.error('[db.js] CREATE TABLEs FAILED:', e.message)
     _initPromise = null
     throw e
+  }
+
+  console.log('[db.js] Adding role column to users...')
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'super_admin'`)
+    console.log('[db.js] Role column added')
+  } catch (e) {
+    console.log('[db.js] Role column already exists (or error):', e.message)
+  }
+
+  console.log('[db.js] Adding email column to users...')
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN email TEXT`)
+    console.log('[db.js] Email column added')
+  } catch (e) {
+    console.log('[db.js] Email column already exists (or error):', e.message)
+  }
+
+  console.log('[db.js] Adding must_change_password column to users...')
+  try {
+    await db.execute(`ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0`)
+    console.log('[db.js] must_change_password column added')
+  } catch (e) {
+    console.log('[db.js] must_change_password column already exists (or error):', e.message)
+  }
+
+  console.log('[db.js] Seeding emails for existing users without email...')
+  try {
+    await db.execute(`UPDATE users SET email = username || '@colegiostjm.com.br' WHERE email IS NULL OR email = ''`)
+    console.log('[db.js] Emails seeded')
+  } catch (e) {
+    console.error('[db.js] Email seeding FAILED:', e.message)
   }
 
   console.log('[db.js] Inserting _content_version...')
@@ -140,5 +178,31 @@ export async function initDb(db) {
     console.log('[db.js] Home page _sections seeded OK')
   } catch (e) {
     console.error('[db.js] Home page _sections seeding FAILED:', e.message)
+  }
+
+  console.log('[db.js] Seeding test users...')
+  try {
+    const testUsers = [
+      { username: 'super_admin', password: 'admin123', role: 'super_admin', email: 'admin@colegiostjm.com.br' },
+      { username: 'editor_admin', password: 'editor123', role: 'editor_admin', email: 'editor@colegiostjm.com.br' },
+      { username: 'editor_blog', password: 'blog123', role: 'editor_blog', email: 'blog@colegiostjm.com.br' },
+      { username: 'gestor_admin', password: 'gestor123', role: 'gestor_admin', email: 'gestor@colegiostjm.com.br' },
+    ]
+    for (const u of testUsers) {
+      const existing = await db.execute({ sql: 'SELECT id FROM users WHERE username = ?', args: [u.username] })
+      if (existing.rows.length === 0) {
+        const hash = await bcrypt.hash(u.password, 10)
+        await db.execute({
+          sql: 'INSERT INTO users (username, password_hash, role, email) VALUES (?, ?, ?, ?)',
+          args: [u.username, hash, u.role, u.email],
+        })
+        console.log('[db.js] User created:', u.username, 'role:', u.role)
+      } else {
+        console.log('[db.js] User already exists, skipping:', u.username)
+      }
+    }
+    console.log('[db.js] Test users seeding complete')
+  } catch (e) {
+    console.error('[db.js] Test users seeding FAILED:', e.message)
   }
 }

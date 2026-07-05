@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, requireRole } from '../middleware/auth.js'
+import { ROLES } from '../roles.js'
 
 const router = Router()
 
@@ -42,7 +43,7 @@ router.get('/', async (req, res) => {
   }
 })
 
-router.put('/', authMiddleware, async (req, res) => {
+router.put('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     const { key, value } = req.body
     if (!key) return res.status(400).json({ error: 'Key is required' })
@@ -60,7 +61,7 @@ router.put('/', authMiddleware, async (req, res) => {
   }
 })
 
-router.put('/bulk', authMiddleware, async (req, res) => {
+router.put('/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     const { entries } = req.body
     if (!entries) return res.status(400).json({ error: 'Entries required' })
@@ -78,7 +79,7 @@ router.put('/bulk', authMiddleware, async (req, res) => {
   }
 })
 
-router.delete('/:key', authMiddleware, async (req, res) => {
+router.delete('/:key', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'DELETE FROM content WHERE key = ?',

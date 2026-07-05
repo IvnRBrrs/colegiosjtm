@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, requireRole } from '../middleware/auth.js'
+import { ROLES } from '../roles.js'
 
 const router = Router()
 
@@ -87,7 +88,7 @@ router.get('/:slug', async (req, res) => {
   }
 })
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
     let slug = (req.body.slug || '').replace(/^\/+|\/+$/g, '')
     const { title, show_in_menu, parent_slug, menu_order, content } = req.body
@@ -150,7 +151,7 @@ router.get('/:slug/content', async (req, res) => {
   }
 })
 
-router.put('/:slug/content', authMiddleware, async (req, res) => {
+router.put('/:slug/content', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   const slug = normSlug(req.params.slug)
   try {
     const entries = req.body
@@ -168,7 +169,7 @@ router.put('/:slug/content', authMiddleware, async (req, res) => {
   }
 })
 
-router.put('/:slug/content/bulk', authMiddleware, async (req, res) => {
+router.put('/:slug/content/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   const slug = normSlug(req.params.slug)
   try {
     const { entries } = req.body
@@ -187,7 +188,7 @@ router.put('/:slug/content/bulk', authMiddleware, async (req, res) => {
   }
 })
 
-router.delete('/:slug', authMiddleware, async (req, res) => {
+router.delete('/:slug', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   const slug = normSlug(req.params.slug)
   try {
     await req.db.execute({
