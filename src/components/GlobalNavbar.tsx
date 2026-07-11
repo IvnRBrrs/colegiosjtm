@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchContentCached, fetchPagesCached } from '../cms/contentCache'
+import { fetchContentCached, fetchPagesCached, getCachedContentSync, getCachedPagesSync } from '../cms/contentCache'
 import NavbarSection from '../sections/Navbar/index'
 
 function buildNavContent(contentData: Record<string, string>, pages: any[]): Record<string, string> {
@@ -36,22 +36,19 @@ function buildNavContent(contentData: Record<string, string>, pages: any[]): Rec
 }
 
 export default function GlobalNavbar() {
-  const [content, setContent] = useState<Record<string, string>>({})
+  const [content, setContent] = useState<Record<string, string>>(() => {
+    const contentData = getCachedContentSync()
+    const pages = getCachedPagesSync()
+    if (contentData && pages) {
+      return buildNavContent(contentData, pages)
+    }
+    return {}
+  })
 
   useEffect(() => {
     Promise.all([fetchContentCached(), fetchPagesCached()]).then(([{ data: contentData }, { data: pages }]) => {
       setContent(buildNavContent(contentData, pages))
     }).catch(() => {})
-
-    const handler = (e: CustomEvent) => {
-      if (e.detail.key === 'global_content' || e.detail.key === 'pages') {
-        Promise.all([fetchContentCached(), fetchPagesCached()]).then(([{ data: contentData }, { data: pages }]) => {
-          setContent(buildNavContent(contentData, pages))
-        }).catch(() => {})
-      }
-    }
-    window.addEventListener('cms-cache-update', handler as EventListener)
-    return () => window.removeEventListener('cms-cache-update', handler as EventListener)
   }, [])
 
   return <NavbarSection content={content} />

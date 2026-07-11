@@ -1,26 +1,29 @@
+import { lazy } from 'react'
 import { ModularSection } from './types'
+import HeroComponent from '../sections/Hero/index'
 
 const schemas = import.meta.glob('../sections/*/schema.ts', { eager: true })
-const components = import.meta.glob('../sections/*/index.tsx', { eager: true })
-const admins = import.meta.glob('../sections/*/admin.tsx', { eager: true })
+const components = import.meta.glob('../sections/*/index.tsx')
+const admins = import.meta.glob('../sections/*/admin.tsx')
 
 export const modularSections: Record<string, ModularSection> = {}
 
 Object.keys(schemas).forEach((path) => {
-  const schemaModule = schemas[path] as any
-  const schema = Object.values(schemaModule)[0] as any
+  const schema = (schemas[path] as any)?.default
+  const sectionTitle = schema?.title
+  if (!schema || !sectionTitle) return
 
   const componentPath = path.replace('schema.ts', 'index.tsx')
   const adminPath = path.replace('schema.ts', 'admin.tsx')
 
-  const Component = (components[componentPath] as any)?.default
-  const Admin = (admins[adminPath] as any)?.default
+  const componentLoader = components[componentPath]
+  const adminLoader = admins[adminPath]
 
-  if (schema && Component && Admin) {
+  if (schema && componentLoader && adminLoader) {
     modularSections[schema.title] = {
       schema,
-      Component,
-      Admin,
+      Component: schema.title === 'Hero' ? HeroComponent : lazy(componentLoader as any),
+      Admin: lazy(adminLoader as any),
     }
   }
 })

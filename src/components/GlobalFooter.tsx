@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchContentCached } from '../cms/contentCache'
+import { fetchContentCached, getCachedContentSync } from '../cms/contentCache'
 import FooterSection from '../sections/Footer/index'
 
 function buildFooterContent(data: Record<string, string>): Record<string, string> {
@@ -11,18 +11,13 @@ function buildFooterContent(data: Record<string, string>): Record<string, string
 }
 
 export default function GlobalFooter() {
-  const [content, setContent] = useState<Record<string, string>>({})
+  const [content, setContent] = useState<Record<string, string>>(() => {
+    const data = getCachedContentSync()
+    return data ? buildFooterContent(data) : {}
+  })
 
   useEffect(() => {
     fetchContentCached().then(({ data }) => setContent(buildFooterContent(data))).catch(() => {})
-
-    const handler = (e: CustomEvent) => {
-      if (e.detail.key === 'global_content') {
-        fetchContentCached().then(({ data }) => setContent(buildFooterContent(data))).catch(() => {})
-      }
-    }
-    window.addEventListener('cms-cache-update', handler as EventListener)
-    return () => window.removeEventListener('cms-cache-update', handler as EventListener)
   }, [])
 
   return <FooterSection content={content} />

@@ -58,7 +58,7 @@ export default function LazyImage({ src, alt, className, imgStyle, loading = 'la
   }
 
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', display: 'flex' }}>
+    <div style={{ position: 'relative', overflow: 'hidden' }}>
       {!loaded && <div className="lazy-glass" />}
       <img
         src={src}

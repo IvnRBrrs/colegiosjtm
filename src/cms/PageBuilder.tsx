@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, Suspense } from 'react'
 import { getModularSection } from './registry'
 
 function createContentProxy(
@@ -29,11 +29,14 @@ function SectionRenderer({ section }: { section: { title: string; instanceId?: s
     return null
   }
   const SectionComponent = mod.Component
-  return <SectionComponent content={content} instanceId={section.instanceId} />
+  return (
+    <Suspense fallback={null}>
+      <SectionComponent content={content} instanceId={section.instanceId} />
+    </Suspense>
+  )
 }
 
 export default function PageBuilder({ sections }: PageBuilderProps) {
-  console.log('[PageBuilder] Rendering sections:', sections.length, sections.map(s => s.title).join(', '))
   return (
     <>
       {sections.map((section, i) => (

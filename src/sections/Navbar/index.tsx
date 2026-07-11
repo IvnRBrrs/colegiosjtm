@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 
 interface NavbarProps {
   content: Record<string, string>
@@ -42,10 +42,16 @@ export default function Navbar({ content }: NavbarProps) {
   }, [])
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
+    <nav
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+        padding: '16px 0',
+        transition: 'all 0.4s ease',
+        background: scrolled ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.15)',
+        backdropFilter: scrolled ? 'blur(20px)' : 'blur(10px)',
+        WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'blur(10px)',
+        boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.06)' : 'none',
+      }}
       className={`navbar ${scrolled ? 'scrolled' : ''}`}
     >
       <div className="navbar-inner container">
@@ -356,6 +362,6 @@ export default function Navbar({ content }: NavbarProps) {
           .mobile-menu { z-index: 999999; }
         }
       `}</style>
-    </motion.nav>
+    </nav>
   )
 }

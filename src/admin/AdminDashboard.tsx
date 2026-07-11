@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchContent } from '../cms/api'
+import { fetchContentCached } from '../cms/contentCache'
 import { getModularSection, getAllSectionTitles } from '../cms/registry'
 import { ROLES } from '../cms/auth'
 
@@ -13,7 +13,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
   const [previewContent, setPreviewContent] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    fetchContent().then(setPreviewContent).catch(() => { })
+    fetchContentCached().then(({ data }) => setPreviewContent(data)).catch(() => { })
   }, [])
 
   const sectionTitles = getAllSectionTitles()
@@ -78,7 +78,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
           <div className="admin-card" onClick={() => onNavigate('historico_alunos')}>
             <div className="admin-card-icon">📋</div>
             <div className="admin-card-info">
-              <h3>Histórico de Alunos</h3>
+              <h3>Cadastro de Alunos</h3>
               <p>Gerenciar registros de alunos</p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchImages } from '../cms/api'
+import { fetchImagesWithDataCached } from '../cms/contentCache'
 
 interface ImageRecord {
   id: string
@@ -20,8 +20,8 @@ export default function ImagePickerModal({ onSelect, onClose }: ImagePickerModal
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchImages().then((data) => {
-      setImages(data)
+    fetchImagesWithDataCached().then(({ data }) => {
+      setImages(data as ImageRecord[])
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
