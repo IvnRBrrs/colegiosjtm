@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { fetchPages } from '../cms/api'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { fetchPagesCached, invalidateCache, getCachedPagesSync } from '../cms/contentCache'
 import api from '../cms/api'
 import { getModularSection, getAllSectionTitles } from '../cms/registry'
 import { AdminProps } from '../cms/types'
@@ -14,7 +14,8 @@ interface Page {
 }
 
 export default function PageManager() {
-  const [pages, setPages] = useState<Page[]>([])
+  const [pages, setPages] = useState<Page[]>(() => getCachedPagesSync() || [])
+  const [loading, setLoading] = useState(() => !getCachedPagesSync())
   const [editingSlug, setEditingSlug] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState('')
   const [newSlug, setNewSlug] = useState('')
@@ -22,7 +23,10 @@ export default function PageManager() {
   useEffect(() => { loadPages() }, [])
 
   const loadPages = async () => {
-    try { setPages(await fetchPages()) } catch {}
+    try {
+      const { data } = await fetchPagesCached()
+      setPages(Array.isArray(data) ? data : [])
+    } catch {} finally { setLoading(false) }
   }
 
   const createPage = async () => {
@@ -31,6 +35,7 @@ export default function PageManager() {
       await api.post('/pages', { title: newTitle, slug: newSlug.replace(/^\/+|\/+$/g, '') })
       setNewTitle('')
       setNewSlug('')
+      invalidateCache('pages')
       loadPages()
     } catch (err) { console.error(err) }
   }
@@ -39,6 +44,8 @@ export default function PageManager() {
     if (!confirm(`Deletar página "${slug}"?`)) return
     try {
       await api.delete(`/pages/${slug.replace(/^\/+|\/+$/g, '')}`)
+      invalidateCache('pages')
+      invalidateCache('page_' + slug)
       loadPages()
       if (editingSlug === slug) setEditingSlug(null)
     } catch (err) { console.error(err) }
@@ -47,6 +54,7 @@ export default function PageManager() {
   const toggleMenuVisibility = async (page: Page) => {
     try {
       await api.put(`/pages/${page.slug.replace(/^\/+|\/+$/g, '')}`, { show_in_menu: page.show_in_menu ? 0 : 1 })
+      invalidateCache('pages')
       loadPages()
     } catch (err) { console.error(err) }
   }
@@ -75,6 +83,9 @@ export default function PageManager() {
       </div>
 
       <h3>Páginas Existentes</h3>
+      {loading ? (
+        <div className="admin-loading">Carregando páginas...</div>
+      ) : (
       <table className="admin-table">
         <thead>
           <tr>
@@ -105,6 +116,7 @@ export default function PageManager() {
           ))}
         </tbody>
       </table>
+      )}
     </div>
   )
 }
@@ -196,6 +208,8 @@ function PageEditor({ slug, onBack, onSaved }: { slug: string; onBack: () => voi
       })
       sectionKeys._sections = JSON.stringify(sections)
       await api.put(`/pages/${slug.replace(/^\/+|\/+$/g, '')}/content/bulk`, { entries: sectionKeys })
+      invalidateCache('pages')
+      invalidateCache('page_' + slug)
       onSaved()
       alert('Página salva!')
     } catch (err: any) {
@@ -292,16 +306,18 @@ function PageEditor({ slug, onBack, onSaved }: { slug: string; onBack: () => voi
 
               {isSelected && mod && (
                 <div className="admin-page-section-body">
-                  <mod.Admin
-                    content={pageContent}
-                    onUpdate={handleContentUpdate}
-                    onUpdateListItem={handleUpdateListItem}
-                    onAddListItem={handleAddListItem}
-                    onRemoveListItem={handleRemoveListItem}
-                    openImageLibrary={openImageLibrary}
-                    editingItemId={editingItemId}
-                    setEditingItemId={setEditingItemId}
-                  />
+                  <Suspense fallback={<div>Carregando editor...</div>}>
+                    <mod.Admin
+                      content={pageContent}
+                      onUpdate={handleContentUpdate}
+                      onUpdateListItem={handleUpdateListItem}
+                      onAddListItem={handleAddListItem}
+                      onRemoveListItem={handleRemoveListItem}
+                      openImageLibrary={openImageLibrary}
+                      editingItemId={editingItemId}
+                      setEditingItemId={setEditingItemId}
+                    />
+                  </Suspense>
                 </div>
               )}
             </div>

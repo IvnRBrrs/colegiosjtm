@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { fetchBlogPosts, fetchBlogTags, fetchBlogAuthors, fetchBlogArchive } from '../../cms/api'
 import LazyImage from '../../components/LazyImage'
 
+function lazyImages(html: string) {
+  return html.replace(/<img\s/gi, '<img loading="lazy" ')
+}
+
 interface BlogProps {
   content: Record<string, string>
 }
@@ -183,7 +187,7 @@ export default function Blog({ content }: BlogProps) {
               </div>
             )}
 
-            <div className="blog-post-content" dangerouslySetInnerHTML={{ __html: selectedPost.content }} />
+            <div className="blog-post-content" dangerouslySetInnerHTML={{ __html: lazyImages(selectedPost.content) }} />
 
             {tags.length > 0 && (
               <div className="blog-post-tags">
@@ -243,7 +247,7 @@ export default function Blog({ content }: BlogProps) {
           .blog-video-wrapper { }
           .blog-video-iframe { width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
           .blog-video-caption { font-size: 0.8rem; color: var(--text-light); margin-top: 6px; }
-          .blog-post-content { line-height: 1.8; color: var(--text); margin-bottom: 32px; }
+          .blog-post-content { line-height: 1.8; color: var(--text); margin-bottom: 32px; content-visibility: auto; contain-intrinsic-size: 500px; }
           .blog-post-content p { margin: 0 0 16px; }
           .blog-post-tags { display: flex; flex-wrap: wrap; gap: 8px; }
           .blog-tag {
@@ -289,14 +293,7 @@ export default function Blog({ content }: BlogProps) {
               </div>
             )}
 
-            {loading ? (
-              <p className="blog-empty">Carregando posts...</p>
-            ) : posts.length === 0 ? (
-              <div className="blog-empty">
-                <p>Nenhum post encontrado.</p>
-                {hasFilters && <button className="btn btn-outline" onClick={clearFilters}>Limpar filtros</button>}
-              </div>
-            ) : (
+            {posts.length > 0 ? (
               <>
                 <div className="blog-grid">
                   {posts.map((post) => {
@@ -337,7 +334,31 @@ export default function Blog({ content }: BlogProps) {
                   </div>
                 )}
               </>
+            ) : null}
+
+            {posts.length === 0 && !loading && (
+              <div className="blog-empty">
+                <p>Nenhum post encontrado.</p>
+                {hasFilters && <button className="btn btn-outline" onClick={clearFilters}>Limpar filtros</button>}
+              </div>
             )}
+
+            {loading && posts.length === 0 && (
+              <div className="blog-grid">
+                {[1,2,3,4,5,6].map((i) => (
+                  <div key={i} className="blog-card blog-card-skeleton">
+                    <div className="blog-card-img-wrapper skeleton-pulse" />
+                    <div className="blog-card-body">
+                      <div className="blog-card-meta"><span className="skeleton-line w-40" /><span className="skeleton-line w-30" /></div>
+                      <div className="skeleton-line w-80" />
+                      <div className="skeleton-line w-60" />
+                      <div className="skeleton-line w-50" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
           </div>
 
           {showSidebar && (
@@ -460,6 +481,12 @@ export default function Blog({ content }: BlogProps) {
         .blog-author-link { background: none; border: none; padding: 6px 0; font-size: 0.85rem; color: var(--text); cursor: pointer; text-align: left; font-family: var(--font-sans); transition: color 0.3s; }
         .blog-author-link:hover { color: var(--primary); }
         .blog-author-link.active { color: var(--primary); font-weight: 600; }
+
+        @keyframes skeletonPulse { 0%,100% { opacity: 0.3 } 50% { opacity: 0.7 } }
+        .skeleton-pulse { background: #e0e0e0; animation: skeletonPulse 1.5s ease-in-out infinite; }
+        .skeleton-line { display: block; height: 14px; border-radius: 6px; background: #e0e0e0; animation: skeletonPulse 1.5s ease-in-out infinite; }
+        .w-80 { width: 80%; } .w-60 { width: 60%; } .w-50 { width: 50%; } .w-40 { width: 40%; } .w-30 { width: 30%; }
+        .blog-card-skeleton { pointer-events: none; }
 
         @media (max-width: 900px) {
           .blog-layout { flex-direction: column; }

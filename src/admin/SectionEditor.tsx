@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { fetchContent, fetchPages, fetchPageContent, bulkUpdateContent, updatePageContent } from '../cms/api'
+import { useState, useEffect, Suspense } from 'react'
+import { bulkUpdateContent, updatePageContent } from '../cms/api'
+import { fetchPagesCached, fetchContentCached, fetchPageContentCached, invalidateCache } from '../cms/contentCache'
 import { getModularSection } from '../cms/registry'
 import { AdminProps } from '../cms/types'
 import ImagePickerModal from './ImagePickerModal'
@@ -22,13 +23,13 @@ export default function SectionEditor({ sectionTitle, onBack }: SectionEditorPro
   const [imagePickerField, setImagePickerField] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchPages().then(setPages).catch(() => {})
+    fetchPagesCached().then(({ data }) => setPages(data)).catch(() => {})
   }, [])
 
   useEffect(() => {
     const load = selectedPage
-      ? fetchPageContent(selectedPage)
-      : fetchContent()
+      ? fetchPageContentCached(selectedPage).then(r => r.data)
+      : fetchContentCached().then(r => r.data)
     load.then((data) => {
       const merged = { ...data }
       if (mod) {
@@ -112,8 +113,10 @@ export default function SectionEditor({ sectionTitle, onBack }: SectionEditorPro
       }
       if (selectedPage) {
         await updatePageContent(selectedPage, sectionKeys)
+        invalidateCache('page_' + selectedPage)
       } else {
         await bulkUpdateContent(sectionKeys)
+        invalidateCache('global_content')
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -207,7 +210,9 @@ export default function SectionEditor({ sectionTitle, onBack }: SectionEditorPro
         </div>
       )}
       <div className="admin-editor-content">
-        <AdminComponent {...adminProps} />
+        <Suspense fallback={<div>Carregando editor...</div>}>
+          <AdminComponent {...adminProps} />
+        </Suspense>
       </div>
 
       {imagePickerField && (

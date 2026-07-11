@@ -61,8 +61,13 @@ router.post('/restore', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (r
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
       args: [key, String(val)],
     }))
-    for (const stmt of statements) await req.db.execute(stmt)
-    await bumpVersion(req.db)
+    if (statements.length > 0) {
+      for (const stmt of statements) await req.db.execute(stmt)
+      await req.db.execute({
+        sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+        args: [],
+      })
+    }
 
     res.json({ success: true })
   } catch (err) {

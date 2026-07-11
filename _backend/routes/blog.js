@@ -53,7 +53,7 @@ router.get('/posts', async (req, res) => {
     const total = countResult.rows[0].total
 
     const result = await req.db.execute({
-      sql: `SELECT id, title, subtitle, author, date, tags, images, videos, slug, published, created_at
+      sql: `SELECT id, title, subtitle, author, date, tags, images, slug, published, created_at
             FROM blog_posts ${where} ORDER BY date DESC, created_at DESC LIMIT ? OFFSET ?`,
       args: [...args, limit, offset],
     })

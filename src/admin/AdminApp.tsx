@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import api from '../cms/api'
 import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos } from './index'
 import { getRoleFromToken, getUsernameFromToken, ROLES } from '../cms/auth'
+import { fetchAdminPreload } from '../cms/api'
+import { seedCache, getCachedMessagesSync } from '../cms/contentCache'
 import ChangePasswordModal from './ChangePasswordModal'
 
 export default function AdminApp() {
@@ -12,12 +14,20 @@ export default function AdminApp() {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [mustChangePassword, setMustChangePassword] = useState(false)
 
+  const hydratePreload = (data: any) => {
+    if (data.content) seedCache('global_content', data.content)
+    if (data.pages) seedCache('pages', data.pages)
+    if (data.blogPosts) seedCache('blog_posts', data.blogPosts)
+    if (data.tags) seedCache('blog_tags', data.tags)
+    if (data.messages) seedCache('messages', data.messages)
+    if (data.images) seedCache('images', data.images)
+    const unread = (data.messages || []).filter((m: any) => !m.read).length
+    setUnreadMessages(unread)
+  }
+
   useEffect(() => {
     if (token) {
-      api.get('/messages').then(({ data }) => {
-        const unread = data.filter((m: any) => !m.read).length
-        setUnreadMessages(unread)
-      }).catch(() => { })
+      fetchAdminPreload().then(hydratePreload).catch(() => {})
     }
   }, [token])
 
@@ -135,7 +145,10 @@ export default function AdminApp() {
 }
 
 function MessagesList() {
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>(() => {
+    const cached = getCachedMessagesSync()
+    return cached || []
+  })
 
   useEffect(() => {
     api.get('/messages').then(({ data }) => setMessages(data)).catch(() => { })

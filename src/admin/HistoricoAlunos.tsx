@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../cms/api'
+import { fetchAlunosCached, invalidateCache, getCachedAlunosSync } from '../cms/contentCache'
 
 const CATEGORIAS_ALUNO = [
   { key: 'rg_aluno', label: 'RG' },
@@ -61,6 +62,7 @@ export default function HistoricoAlunos() {
   }
 
   const handleSalvo = () => {
+    invalidateCache('alunos')
     setEditingId(null)
     setTab('listar')
   }
@@ -304,9 +306,9 @@ function NovoCadastro({ onSalvo, editId }: { onSalvo: () => void; editId?: strin
 }
 
 function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
-  const [alunos, setAlunos] = useState<Aluno[]>([])
+  const [alunos, setAlunos] = useState<Aluno[]>(() => getCachedAlunosSync() || [])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCachedAlunosSync())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedAnexos, setSelectedAnexos] = useState<any[]>([])
   const [showDetail, setShowDetail] = useState(false)
@@ -314,13 +316,21 @@ function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
   useEffect(() => { loadAlunos() }, [])
 
   const loadAlunos = async (term?: string) => {
-    setLoading(true)
+    if (!term) setLoading(alunos.length === 0)
     try {
-      const params = term?.trim() ? `?search=${encodeURIComponent(term.trim())}` : ''
-      const { data } = await api.get(`/historico-alunos${params}`)
-      setAlunos(data)
-    } catch { setAlunos([]) }
-    finally { setLoading(false) }
+      if (term?.trim()) {
+        const params = `?search=${encodeURIComponent(term.trim())}`
+        const { data } = await api.get(`/historico-alunos${params}`)
+        setAlunos(data)
+      } else {
+        const { data } = await fetchAlunosCached()
+        setAlunos(data)
+      }
+    } catch {
+      if (!term) setAlunos([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSearch = () => loadAlunos(search)
@@ -342,6 +352,7 @@ function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
     if (!confirm('Excluir este cadastro?')) return
     try {
       await api.delete(`/historico-alunos/${id}`)
+      invalidateCache('alunos')
       loadAlunos(search)
       if (selectedId === id) setShowDetail(false)
     } catch { }

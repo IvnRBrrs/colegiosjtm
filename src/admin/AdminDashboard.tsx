@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchContent } from '../cms/api'
+import { fetchContentCached } from '../cms/contentCache'
 import { getModularSection, getAllSectionTitles } from '../cms/registry'
 import { ROLES } from '../cms/auth'
 
@@ -13,7 +13,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
   const [previewContent, setPreviewContent] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    fetchContent().then(setPreviewContent).catch(() => { })
+    fetchContentCached().then(({ data }) => setPreviewContent(data)).catch(() => { })
   }, [])
 
   const sectionTitles = getAllSectionTitles()

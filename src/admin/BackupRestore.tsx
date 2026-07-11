@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import api, { fetchBackups, createBackup, fetchContent } from '../cms/api'
+import api, { fetchBackups, createBackup } from '../cms/api'
+import { fetchContentCached } from '../cms/contentCache'
 
 interface Backup {
   id: number
@@ -47,7 +48,7 @@ export default function BackupRestore() {
 
   const handleCreateBackup = async () => {
     try {
-      const content = await fetchContent()
+      const { data: content } = await fetchContentCached()
       await createBackup(selectedKey, content)
       loadBackups()
     } catch (err) {

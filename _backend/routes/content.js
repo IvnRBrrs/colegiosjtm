@@ -4,20 +4,6 @@ import { ROLES } from '../roles.js'
 
 const router = Router()
 
-async function bumpVersion(db) {
-  await db.execute(`UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`)
-}
-
-router.get('/version', async (req, res) => {
-  try {
-    const result = await req.db.execute(`SELECT value FROM content WHERE key = '_content_version'`)
-    const version = result.rows.length > 0 ? parseInt(result.rows[0].value) || 1 : 1
-    res.json({ version })
-  } catch (err) {
-    res.status(500).json({ error: String(err) })
-  }
-})
-
 const _pending = new Map()
 
 router.get('/', async (req, res) => {
@@ -53,8 +39,10 @@ router.put('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMI
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
       args: [key, value],
     })
-
-    await bumpVersion(req.db)
+    await req.db.execute({
+      sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+      args: [],
+    })
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -71,8 +59,13 @@ router.put('/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
       args: [key, value],
     }))
-    for (const stmt of statements) await req.db.execute(stmt)
-    await bumpVersion(req.db)
+    if (statements.length > 0) {
+      for (const stmt of statements) await req.db.execute(stmt)
+      await req.db.execute({
+        sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+        args: [],
+      })
+    }
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: String(err) })

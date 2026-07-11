@@ -4,10 +4,6 @@ import { ROLES } from '../roles.js'
 
 const router = Router()
 
-async function bumpVersion(db) {
-  await db.execute(`UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`)
-}
-
 router.get('/', async (req, res) => {
   try {
     const result = await req.db.execute(`
@@ -119,8 +115,11 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADM
         })
       })
     }
+    statements.push({
+      sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+      args: [],
+    })
     for (const stmt of statements) await req.db.execute(stmt)
-    await bumpVersion(req.db)
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -160,8 +159,13 @@ router.put('/:slug/content', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLE
             ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
       args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
     }))
-    for (const stmt of statements) await req.db.execute(stmt)
-    await bumpVersion(req.db)
+    if (statements.length > 0) {
+      for (const stmt of statements) await req.db.execute(stmt)
+      await req.db.execute({
+        sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+        args: [],
+      })
+    }
     res.json({ success: true })
   } catch (err) {
     console.error('[pages.js] PUT /:slug/content ERROR:', err)
@@ -179,8 +183,13 @@ router.put('/:slug/content/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN,
             ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
       args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
     }))
-    for (const stmt of statements) await req.db.execute(stmt)
-    await bumpVersion(req.db)
+    if (statements.length > 0) {
+      for (const stmt of statements) await req.db.execute(stmt)
+      await req.db.execute({
+        sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+        args: [],
+      })
+    }
     res.json({ success: true })
   } catch (err) {
     console.error('[pages.js] PUT /:slug/content/bulk ERROR:', err)
@@ -199,7 +208,10 @@ router.delete('/:slug', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDI
       sql: 'DELETE FROM pages WHERE slug = ?',
       args: [slug],
     })
-    await bumpVersion(req.db)
+    await req.db.execute({
+      sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+      args: [],
+    })
     res.json({ success: true })
   } catch (err) {
     console.error('[pages.js] DELETE /:slug ERROR:', err)

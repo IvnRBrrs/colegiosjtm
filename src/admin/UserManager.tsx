@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../cms/api'
 import { getRoleFromToken, ROLE_NAMES, ROLES } from '../cms/auth'
+import { fetchUsersCached, invalidateCache, getCachedUsersSync } from '../cms/contentCache'
 
 interface User {
   id: number
@@ -16,7 +17,7 @@ interface UserManagerProps {
 }
 
 export default function UserManager({ currentUsername = '' }: UserManagerProps) {
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<User[]>(() => getCachedUsersSync() || [])
   const [newUsername, setNewUsername] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newEmail, setNewEmail] = useState('')
@@ -26,20 +27,20 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
   const [tempPassword, setTempPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [status, setStatus] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCachedUsersSync())
   const [error, setError] = useState('')
 
   useEffect(() => { loadUsers() }, [])
 
   const loadUsers = async () => {
-    setLoading(true)
     setError('')
     try {
-      const { data } = await api.get('/auth/users')
+      const { data } = await fetchUsersCached()
       setUsers(data)
     } catch (err: any) {
-      setUsers([])
-      setError(err.response?.data?.error || err.message || 'Erro ao carregar usuários')
+      if (users.length === 0) {
+        setError(err.response?.data?.error || err.message || 'Erro ao carregar usuários')
+      }
     } finally {
       setLoading(false)
     }
@@ -60,6 +61,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
       setNewEmail('')
       setNewRole(ROLES.EDITOR_ADMIN)
       setStatus('Usuário criado com sucesso!')
+      invalidateCache('users')
       loadUsers()
     } catch (err: any) {
       setStatus(err.response?.data?.error || 'Erro ao criar')
@@ -70,6 +72,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
     try {
       await api.put(`/auth/users/${id}`, { username, role, email })
       setEditingUser(null)
+      invalidateCache('users')
       loadUsers()
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao salvar')
@@ -80,6 +83,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
     if (!confirm('Excluir este usuário?')) return
     try {
       await api.delete(`/auth/users/${id}`)
+      invalidateCache('users')
       loadUsers()
     } catch { }
   }
@@ -99,6 +103,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
       setTempPassword('')
       setConfirmPassword('')
       alert(`Senha do usuário "${resetData.username}" redefinida com sucesso!`)
+      invalidateCache('users')
       loadUsers()
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao redefinir senha')

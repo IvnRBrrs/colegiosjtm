@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react'
 import { AdminProps } from '../../cms/types'
 import { fetchBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost, fetchBlogPost } from '../../cms/api'
+import { getCachedBlogPostsSync, invalidateCache } from '../../cms/contentCache'
 import ImagePickerModal from '../../admin/ImagePickerModal'
 
 export default function BlogAdmin({ content, onUpdate }: AdminProps) {
-  const [posts, setPosts] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
+  const [posts, setPosts] = useState<any[]>(() => {
+    const cached = getCachedBlogPostsSync()
+    return cached || []
+  })
+  const [total, setTotal] = useState(() => {
+    const cached = getCachedBlogPostsSync()
+    return cached ? cached.length : 0
+  })
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -14,12 +21,11 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
     title: '', subtitle: '', content: '', author: '', date: new Date().toISOString().split('T')[0],
     tags: '', images: '[]', videos: '[]', published: true,
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCachedBlogPostsSync())
   const [saving, setSaving] = useState(false)
   const [imagePickerTarget, setImagePickerTarget] = useState<'images' | 'videos' | null>(null)
 
   const loadPosts = async () => {
-    setLoading(true)
     try {
       const data = await fetchBlogPosts({ page, limit: 10, search })
       setPosts(data.posts)
@@ -82,6 +88,7 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
         await createBlogPost(payload)
       }
       resetForm()
+      invalidateCache('blog_posts')
       loadPosts()
       alert(editingId ? 'Post atualizado!' : 'Post criado!')
     } catch (err: any) {
@@ -94,6 +101,7 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
     try {
       await deleteBlogPost(id)
       if (editingId === id) resetForm()
+      invalidateCache('blog_posts')
       loadPosts()
     } catch (err: any) {
       alert('Erro: ' + (err.response?.data?.error || err.message))

@@ -94,7 +94,7 @@ export async function initDb(db) {
       created_at TEXT DEFAULT (datetime('now')))`,
   ]
 
-  console.log('[db.js] Starting sequential CREATE TABLEs...')
+  console.log('[db.js] Creating tables in batch...')
   _initPromise = (async () => {
     for (const sql of tables) await db.execute(sql)
   })()
@@ -224,6 +224,23 @@ export async function initDb(db) {
     }
   } catch (e) {
     console.error('[db.js] Migration V2 FAILED:', e.message)
+  }
+
+  // Thumbnails migration: add thumbnail column to images
+  try {
+    const thumbCheck = await db.execute(`SELECT value FROM content WHERE key = '_migration_thumbnails'`)
+    if (thumbCheck.rows.length === 0) {
+      const imgInfo = await db.execute('PRAGMA table_info(images)')
+      const imgCols = imgInfo.rows.map((r) => r.name)
+      if (!imgCols.includes('thumbnail')) {
+        await db.execute(`ALTER TABLE images ADD COLUMN thumbnail TEXT`)
+        console.log('[db.js] thumbnail column added')
+      }
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_thumbnails', '1')`)
+      console.log('[db.js] Thumbnail migration complete')
+    }
+  } catch (e) {
+    console.error('[db.js] Thumbnail migration FAILED:', e.message)
   }
 
   // Seed alunos fictícios (runs once regardless of migration status)

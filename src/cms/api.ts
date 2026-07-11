@@ -31,9 +31,7 @@ export default api
 
 // Content helpers
 export async function fetchContent(): Promise<Record<string, string>> {
-  console.log('[API] fetchContent')
   const { data } = await api.get('/content')
-  console.log('[API] fetchContent SUCCESS, keys:', Object.keys(data).length)
   return data
 }
 
@@ -54,13 +52,10 @@ export async function fetchPages() {
 function normSlug(s: string) { return s.replace(/^\/+|\/+$/g, '') }
 
 export async function fetchPageContent(slug: string): Promise<Record<string, string>> {
-  console.log('[API] fetchPageContent slug:', slug)
   try {
     const { data } = await api.get(`/pages/${normSlug(slug)}/content`)
-    console.log('[API] fetchPageContent SUCCESS, keys:', Object.keys(data).length, 'has _sections:', !!data._sections)
     return data
   } catch (err) {
-    console.error('[API] fetchPageContent ERROR:', err)
     throw err
   }
 }
@@ -70,13 +65,27 @@ export async function updatePageContent(slug: string, entries: Record<string, st
 }
 
 // Images
-export async function uploadImage(filename: string, data: string, type: string, component_type?: string) {
-  const { data: result } = await api.post('/images/upload', { filename, data, type, component_type })
+export async function uploadImage(filename: string, data: string, type: string, component_type?: string, thumbnail?: string) {
+  const { data: result } = await api.post('/images/upload', { filename, data, type, component_type, thumbnail })
   return result
 }
 
-export async function fetchImages() {
-  const { data } = await api.get('/images')
+export async function fetchImages(includeData = false) {
+  const { data } = await api.get(`/images?data=${includeData}`)
+  return data
+}
+
+export async function fetchImageData(id: string) {
+  const { data } = await api.get(`/images/${id}/data`)
+  return data
+}
+
+export async function updateImageThumbnail(id: string, thumbnail: string) {
+  await api.patch(`/images/${id}/thumbnail`, { thumbnail })
+}
+
+export async function fetchAdminPreload() {
+  const { data } = await api.get('/admin/preload')
   return data
 }
 
