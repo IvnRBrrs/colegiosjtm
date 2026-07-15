@@ -126,6 +126,41 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADM
   }
 })
 
+router.put('/:slug', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+  const slug = normSlug(req.params.slug)
+  try {
+    const updates = req.body
+    const sets = []
+    const args = []
+    if (updates.show_in_menu !== undefined) {
+      sets.push('show_in_menu = ?')
+      args.push(updates.show_in_menu ? 1 : 0)
+    }
+    if (updates.title !== undefined) {
+      sets.push('title = ?')
+      args.push(updates.title)
+    }
+    if (updates.parent_slug !== undefined) {
+      sets.push('parent_slug = ?')
+      args.push(updates.parent_slug || null)
+    }
+    if (updates.menu_order !== undefined) {
+      sets.push('menu_order = ?')
+      args.push(updates.menu_order)
+    }
+    if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' })
+    args.push(slug)
+    await req.db.execute({ sql: `UPDATE pages SET ${sets.join(', ')} WHERE slug = ?`, args })
+    await req.db.execute({
+      sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
+      args: [],
+    })
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
 router.get('/:slug/content', async (req, res) => {
   const slug = normSlug(req.params.slug)
   try {
