@@ -88,11 +88,11 @@ function CtaOverlay() {
           min-height: auto; 
           height: 50vh; 
           max-height: none;
-          border: 4px solid gray;
         }
         .plm-card-bg {
           position: absolute; inset: 0;
-          background-size: cover; background-position: center;
+          background-size: contain; background-repeat: no-repeat;
+          background-position: center; background-color: #06244a;
           opacity: 0.4;
         }
         .plm-card-gradient {

@@ -38,10 +38,10 @@ function SectionRenderer({ section }: { section: { title: string; instanceId?: s
 
 export default function PageBuilder({ sections }: PageBuilderProps) {
   return (
-    <>
+    <div className="page-sections">
       {sections.map((section, i) => (
         <SectionRenderer key={section.instanceId || section.title + i} section={section} />
       ))}
-    </>
+    </div>
   )
 }

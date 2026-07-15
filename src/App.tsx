@@ -25,17 +25,17 @@ function Loading() { return <div style={{ display: 'flex', alignItems: 'center',
 
 function SiteLayout() {
   return (
-    <>
+    <div className="site-layout">
       <Suspense fallback={null}>
         <ThreeBackground />
       </Suspense>
       <GlobalNavbar />
       <WhatsAppButton />
-      <main style={{ position: 'relative', zIndex: 1 }}>
+      <main className="site-main" style={{ position: 'relative', zIndex: 1 }}>
         <DynamicPage />
       </main>
       <GlobalFooter />
-    </>
+    </div>
   )
 }
 
