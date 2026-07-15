@@ -21,6 +21,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
   const frontendSectionTitles = [
     'Hero', 'Sobre', 'Segmentos', 'Galeria', 'Depoimentos',
     'FAQ', 'Contato', 'Mapa', 'Blog', 'Footer', 'Navbar',
+    'CallToAction',
   ]
 
   const isSuperAdmin = role === ROLES.SUPER_ADMIN
