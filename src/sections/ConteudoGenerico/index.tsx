@@ -44,6 +44,17 @@ export default function ConteudoGenerico({ content, instanceId }: { content: Rec
   const hasPrev = slideIndex > 0
   const hasNext = slideIndex < images.length - 1
 
+  const hasAnyContent = (
+    (showTitle && title) ||
+    (showSubtitle && subtitle) ||
+    (showCarousel && images.length > 0) ||
+    (showVideo && embedUrl) ||
+    (showText && rawHtml) ||
+    (showButton && buttonText && buttonLink)
+  )
+
+  if (!hasAnyContent) return null
+
   return (
     <section className="cg-section" style={{ backgroundColor: bgColor }}>
       <div className="cg-container">
@@ -91,9 +102,12 @@ export default function ConteudoGenerico({ content, instanceId }: { content: Rec
       </div>
       <style>{`
         .cg-section {
-          width: 100%; min-height: 100vh;
-          padding: 60px 20px;
+          width: 100%;
+          padding: 20px 20px 80px;
           box-sizing: border-box;
+        }
+        .page-sections > .cg-section:first-child {
+          padding-top: 60px;
           margin-top: 80px;
         }
         .cg-container {
@@ -121,7 +135,8 @@ export default function ConteudoGenerico({ content, instanceId }: { content: Rec
         }
         .cg-carousel-slide img {
           width: 100%; display: block;
-          height: 400px; object-fit: cover;
+          max-height: 400px; object-fit: contain;
+          background: #e8e8e8;
         }
         .cg-carousel-btn {
           position: absolute; top: 50%; transform: translateY(-50%);
@@ -172,8 +187,8 @@ export default function ConteudoGenerico({ content, instanceId }: { content: Rec
         }
         .cg-button:hover { transform: scale(1.05); }
         @media (max-width: 768px) {
-          .cg-section { padding: 40px 16px; }
-          .cg-carousel-slide img { height: 250px; }
+          .cg-section { padding: 32px 16px 48px; }
+          .cg-carousel-slide img { max-height: 250px; }
         }
       `}</style>
     </section>
