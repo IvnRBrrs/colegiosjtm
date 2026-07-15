@@ -33,17 +33,23 @@ function CtaOverlay() {
   const [dismissed, setDismissed] = useState(false)
   const [autoClosed, setAutoClosed] = useState(false)
 
+  const durationSec = parseInt(globalContent?.calltoaction_duration || '10', 10)
+  const [countdown, setCountdown] = useState(durationSec)
+
   const visible = !ctaHidden && !dismissed && !autoClosed
 
   useEffect(() => {
     if (ctaHidden) return
     setAutoClosed(false)
     setDismissed(false)
-    const duration = parseInt(globalContent?.calltoaction_duration || '10', 10) * 1000
-    if (duration <= 0) return
-    const timer = setTimeout(() => setAutoClosed(true), duration)
-    return () => clearTimeout(timer)
-  }, [ctaHidden, globalContent?.calltoaction_duration])
+    setCountdown(durationSec)
+    if (durationSec <= 0) return
+    const timer = setTimeout(() => setAutoClosed(true), durationSec * 1000)
+    const interval = setInterval(() => {
+      setCountdown((prev) => Math.max(0, prev - 1))
+    }, 1000)
+    return () => { clearTimeout(timer); clearInterval(interval) }
+  }, [ctaHidden, durationSec])
 
   if (!visible) return null
 
@@ -104,6 +110,15 @@ function CtaOverlay() {
           border-top-color: #F4F084;
           border-radius: 50%;
           animation: plmSpin 0.9s linear infinite;
+        }
+        .plm-countdown {
+          width: 40px; height: 40px; margin: 0 auto 16px;
+          border: 2px solid rgba(244,240,132,0.5);
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-family: 'Open Sans', sans-serif;
+          font-size: 1rem; font-weight: 700;
+          color: #F4F084;
         }
         .plm-badge {
           display: inline-block;
@@ -184,7 +199,11 @@ function CtaOverlay() {
           <div className="plm-card-gradient" />
           <button className="plm-close" onClick={() => setDismissed(true)} aria-label="Fechar">&times;</button>
           <div className="plm-body">
-            <div className="plm-spinner" />
+            {hasCtaContent ? (
+              <div className="plm-countdown">{countdown}</div>
+            ) : (
+              <div className="plm-spinner" />
+            )}
             {hasCtaContent ? (
               <>
                 <h1 className="plm-title">{ctaTitle}</h1>

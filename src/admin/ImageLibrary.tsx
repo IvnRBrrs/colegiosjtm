@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { fetchImages, fetchImageData, uploadImage, updateImageThumbnail } from '../cms/api'
+import { fetchImages, fetchImageData, uploadImage, updateImageThumbnail, deleteImage } from '../cms/api'
 import { getCachedImagesSync, fetchImagesCached, invalidateCache } from '../cms/contentCache'
 import { createThumbnail } from '../cms/thumbnail'
 
@@ -25,6 +25,7 @@ export default function ImageLibrary({ onSelect }: ImageLibraryProps) {
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [generatingCount, setGeneratingCount] = useState(0)
   const generatingRef = useRef(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchImagesCached().then(({ data }) => {
@@ -100,6 +101,36 @@ export default function ImageLibrary({ onSelect }: ImageLibraryProps) {
     setPreviewData(null)
   }, [])
 
+  const handleDelete = useCallback(async () => {
+    if (!confirmDeleteId) return
+    try {
+      await deleteImage(confirmDeleteId)
+      invalidateCache('images')
+      invalidateCache('images_data')
+      setImages((prev) => prev.filter((i) => i.id !== confirmDeleteId))
+      if (previewId === confirmDeleteId) { setPreviewId(null); setPreviewData(null) }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setConfirmDeleteId(null)
+    }
+  }, [confirmDeleteId, previewId])
+
+  const handleDownload = useCallback(async (id: string, filename: string) => {
+    try {
+      const imgData = await fetchImageData(id)
+      const url = `data:${imgData.type};base64,${imgData.data}`
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
   const handleUse = useCallback(async (img: ImageMeta) => {
     try {
       const imgData = await fetchImageData(img.id)
@@ -146,9 +177,13 @@ export default function ImageLibrary({ onSelect }: ImageLibraryProps) {
             )}
             <div className="admin-image-item-info">
               <span>{img.filename}</span>
-              {onSelect && (
-                <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleUse(img) }}>Usar</button>
-              )}
+              <div className="admin-image-item-actions">
+                <button className="btn btn-sm btn-icon" title="Download" onClick={(e) => { e.stopPropagation(); handleDownload(img.id, img.filename) }}>&#8595;</button>
+                {onSelect && (
+                  <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleUse(img) }}>Usar</button>
+                )}
+                <button className="btn btn-sm btn-danger btn-icon" title="Excluir" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(img.id) }}>&#128465;</button>
+              </div>
             </div>
           </div>
         ))}
@@ -160,7 +195,30 @@ export default function ImageLibrary({ onSelect }: ImageLibraryProps) {
           <div className="admin-image-preview-modal" onClick={(e) => e.stopPropagation()}>
             <button className="admin-image-preview-close" onClick={closePreview}>&times;</button>
             {loadingPreview && <p>Carregando...</p>}
-            {previewData && <img src={previewData} alt="preview" />}
+            {previewData && (
+              <>
+                <img src={previewData} alt="preview" />
+                <div className="admin-image-preview-actions">
+                  <button className="btn btn-sm" onClick={() => {
+                    const img = images.find((i) => i.id === previewId)
+                    if (img) handleDownload(img.id, img.filename)
+                  }}>&#8595; Download</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => setConfirmDeleteId(previewId)}>&#128465; Excluir</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {confirmDeleteId && (
+        <div className="admin-image-preview-overlay" onClick={() => setConfirmDeleteId(null)}>
+          <div className="admin-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <p>Tem certeza que deseja excluir esta imagem?</p>
+            <p className="admin-confirm-filename">{images.find((i) => i.id === confirmDeleteId)?.filename}</p>
+            <div className="admin-confirm-actions">
+              <button className="btn btn-outline" onClick={() => setConfirmDeleteId(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={handleDelete}>Excluir</button>
+            </div>
           </div>
         </div>
       )}

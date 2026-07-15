@@ -966,3 +966,62 @@
   padding: 40px;
   color: #666;
 }
+
+.admin-image-preview-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.admin-image-item-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.admin-confirm-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90vw;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.admin-confirm-modal p {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: #333;
+  padding: 0;
+}
+
+.admin-confirm-filename {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #666;
+  word-break: break-all;
+}
+
+.admin-confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.admin-confirm-actions .btn {
+  min-width: 100px;
+}
