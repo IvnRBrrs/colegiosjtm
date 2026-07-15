@@ -84,6 +84,10 @@ export async function updateImageThumbnail(id: string, thumbnail: string) {
   await api.patch(`/images/${id}/thumbnail`, { thumbnail })
 }
 
+export async function deleteImage(id: string) {
+  await api.delete(`/images/${id}`)
+}
+
 export async function fetchAdminPreload() {
   const { data } = await api.get('/admin/preload')
   return data
