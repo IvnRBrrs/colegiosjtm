@@ -107,6 +107,7 @@ export async function initDb(db) {
       nome_aluno TEXT NOT NULL,
       idade TEXT DEFAULT '',
       ano_letivo_atual TEXT DEFAULT '',
+      serie_desejada TEXT DEFAULT '',
       telefone TEXT DEFAULT '',
       whatsapp TEXT DEFAULT '',
       email TEXT NOT NULL,
@@ -277,6 +278,24 @@ export async function initDb(db) {
     }
   } catch (e) {
     console.error('[db.js] Messages migration FAILED:', e.message)
+  }
+
+  // Pre-enrollments migration: add source column if missing
+  try {
+    const preInfo = await db.execute('PRAGMA table_info(pre_enrollments)')
+    if (preInfo.rows.length > 0) {
+      const preCols = preInfo.rows.map((r) => r.name)
+      if (!preCols.includes('source')) {
+        await db.execute(`ALTER TABLE pre_enrollments ADD COLUMN source TEXT NOT NULL DEFAULT 'cliente'`)
+        console.log('[db.js] source column added to pre_enrollments')
+      }
+      if (!preCols.includes('serie_desejada')) {
+        await db.execute(`ALTER TABLE pre_enrollments ADD COLUMN serie_desejada TEXT DEFAULT ''`)
+        console.log('[db.js] serie_desejada column added to pre_enrollments')
+      }
+    }
+  } catch (e) {
+    console.error('[db.js] Pre-enrollments migration FAILED:', e.message)
   }
 
   // Seed alunos fictícios (runs once regardless of migration status)

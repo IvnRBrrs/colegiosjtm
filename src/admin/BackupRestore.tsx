@@ -109,7 +109,7 @@ export default function BackupRestore() {
               <tr key={b.id}>
                 <td>{b.id}</td>
                 <td>{b.version}</td>
-                <td>{new Date(b.created_at).toLocaleString()}</td>
+                <td>{new Date(b.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
                 <td>
                   <button className="btn btn-sm" onClick={() => handleRestore(b)} disabled={restoring}>
                     Restaurar
