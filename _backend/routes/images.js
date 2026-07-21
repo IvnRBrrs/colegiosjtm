@@ -30,7 +30,7 @@ router.get('/:id/data', async (req, res) => {
   }
 })
 
-router.post('/upload', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+router.post('/upload', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const { filename, data, type, component_type, thumbnail } = req.body
     if (!filename || !data || !type) {
@@ -49,7 +49,7 @@ router.post('/upload', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDIT
   }
 })
 
-router.patch('/:id/thumbnail', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+router.patch('/:id/thumbnail', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const { thumbnail } = req.body
     if (!thumbnail) return res.status(400).json({ error: 'thumbnail is required' })
@@ -64,7 +64,7 @@ router.patch('/:id/thumbnail', authMiddleware, requireRole(ROLES.SUPER_ADMIN, RO
   }
 })
 
-router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'DELETE FROM images WHERE id = ?',

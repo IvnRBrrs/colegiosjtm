@@ -7,7 +7,7 @@ const router = Router()
 
 router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
-    const result = await req.db.execute('SELECT * FROM contact_messages ORDER BY created_at DESC')
+    const result = await req.db.execute('SELECT * FROM pre_enrollments ORDER BY created_at DESC')
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -16,14 +16,14 @@ router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMI
 
 router.post('/', async (req, res) => {
   try {
-    const { name, email, phone, message } = req.body
-    if (!name || !email || !message) {
-      return res.status(400).json({ error: 'name, email, and message are required' })
+    const { responsavel, nome_aluno, idade, ano_letivo_atual, telefone, whatsapp, email, mensagem } = req.body
+    if (!responsavel || !nome_aluno || !email) {
+      return res.status(400).json({ error: 'responsavel, nome_aluno, and email are required' })
     }
 
     await req.db.execute({
-      sql: 'INSERT INTO contact_messages (name, email, phone, message) VALUES (?, ?, ?, ?)',
-      args: [name, email, phone || null, message],
+      sql: 'INSERT INTO pre_enrollments (responsavel, nome_aluno, idade, ano_letivo_atual, telefone, whatsapp, email, mensagem) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [responsavel, nome_aluno, idade || null, ano_letivo_atual || null, telefone || null, whatsapp || null, email, mensagem || null],
     })
 
     res.json({ success: true })
@@ -35,7 +35,7 @@ router.post('/', async (req, res) => {
 router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
-      sql: 'UPDATE contact_messages SET read = 1 WHERE id = ?',
+      sql: 'UPDATE pre_enrollments SET read = 1 WHERE id = ?',
       args: [req.params.id],
     })
     res.json({ success: true })
@@ -47,7 +47,7 @@ router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GES
 router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
-      sql: 'UPDATE contact_messages SET archived = 1 WHERE id = ?',
+      sql: 'UPDATE pre_enrollments SET archived = 1 WHERE id = ?',
       args: [req.params.id],
     })
     res.json({ success: true })
@@ -59,7 +59,7 @@ router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.
 router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
-      sql: 'DELETE FROM contact_messages WHERE id = ?',
+      sql: 'DELETE FROM pre_enrollments WHERE id = ?',
       args: [req.params.id],
     })
     res.json({ success: true })

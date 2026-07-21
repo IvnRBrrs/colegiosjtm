@@ -6,13 +6,14 @@ const router = Router()
 
 router.get('/preload', authMiddleware, async (req, res) => {
   try {
-    const [contentResult, imagesResult, pagesResult, blogResult, tagsResult, messagesResult] = await Promise.all([
+    const [contentResult, imagesResult, pagesResult, blogResult, tagsResult, messagesResult, preEnrollmentsResult] = await Promise.all([
       req.db.execute('SELECT key, value FROM content'),
       req.db.execute("SELECT id, filename, type, component_type, thumbnail, created_at FROM images ORDER BY created_at DESC"),
       req.db.execute('SELECT * FROM pages'),
       req.db.execute("SELECT id, title, subtitle, author, date, tags, images, slug, published, created_at FROM blog_posts ORDER BY date DESC LIMIT 50"),
       req.db.execute("SELECT tags FROM blog_posts WHERE tags != '[]'"),
-      req.db.execute('SELECT id, name, email, phone, message, created_at, read FROM messages ORDER BY created_at DESC'),
+      req.db.execute('SELECT id, name, email, phone, message, created_at, read, archived FROM contact_messages ORDER BY created_at DESC'),
+      req.db.execute('SELECT * FROM pre_enrollments ORDER BY created_at DESC'),
     ])
 
     const content = {}
@@ -30,6 +31,7 @@ router.get('/preload', authMiddleware, async (req, res) => {
       blogPosts: rowsToObjects(blogResult.rows, blogResult.columns),
       tags: Array.from(tagSet).sort(),
       messages: rowsToObjects(messagesResult.rows, messagesResult.columns),
+      preEnrollments: rowsToObjects(preEnrollmentsResult.rows, preEnrollmentsResult.columns),
     })
   } catch (err) {
     res.status(500).json({ error: String(err) })

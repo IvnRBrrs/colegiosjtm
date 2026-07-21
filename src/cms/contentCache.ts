@@ -116,6 +116,13 @@ export function getCachedMessagesSync(): any[] | null {
   return c ? c.d : null
 }
 
+export function getCachedPreEnrollmentsSync(): any[] | null {
+  const mem = readMemCache<any[]>('pre_enrollments')
+  if (mem) return mem.d
+  const c = getCached<any[]>('pre_enrollments')
+  return c ? c.d : null
+}
+
 export function getCachedImagesSync(): any[] | null {
   const mem = readMemCache<any[]>('images')
   if (mem) return mem.d

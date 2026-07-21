@@ -5,6 +5,7 @@ import { getCachedBlogPostsSync, invalidateCache } from '../../cms/contentCache'
 import ImagePickerModal from '../../admin/ImagePickerModal'
 
 export default function BlogAdmin({ content, onUpdate }: AdminProps) {
+  const [showSectionConfig, setShowSectionConfig] = useState(false)
   const [posts, setPosts] = useState<any[]>(() => {
     const cached = getCachedBlogPostsSync()
     return cached || []
@@ -169,30 +170,38 @@ export default function BlogAdmin({ content, onUpdate }: AdminProps) {
 
   return (
     <div className="admin-fields">
-      <div className="admin-field">
-        <label>Label da Seção</label>
-        <input value={content.blog_label || ''} onChange={(e) => onUpdate('blog_label', e.target.value)} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowSectionConfig((v) => !v)}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 600 }}>{showSectionConfig ? '▼' : '▶'}</span>
+        <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--primary-dark)' }}>Configurações da Seção</span>
       </div>
-      <div className="admin-field">
-        <label>Prefixo do Título</label>
-        <input value={content.blog_title_prefix || ''} onChange={(e) => onUpdate('blog_title_prefix', e.target.value)} />
-      </div>
-      <div className="admin-field">
-        <label>Destaque do Título</label>
-        <input value={content.blog_title_highlight || ''} onChange={(e) => onUpdate('blog_title_highlight', e.target.value)} />
-      </div>
-      <div className="admin-field">
-        <label>Subtítulo</label>
-        <textarea rows={2} value={content.blog_subtitle || ''} onChange={(e) => onUpdate('blog_subtitle', e.target.value)} />
-      </div>
-      <div className="admin-field">
-        <label>Posts por Página</label>
-        <input value={content.blog_posts_per_page || '10'} onChange={(e) => onUpdate('blog_posts_per_page', e.target.value)} />
-      </div>
-      <div className="admin-field">
-        <label>Mostrar Sidebar (true/false)</label>
-        <input value={content.blog_show_sidebar || 'true'} onChange={(e) => onUpdate('blog_show_sidebar', e.target.value)} />
-      </div>
+      {showSectionConfig && (
+        <>
+          <div className="admin-field">
+            <label>Label da Seção</label>
+            <input value={content.blog_label || ''} onChange={(e) => onUpdate('blog_label', e.target.value)} />
+          </div>
+          <div className="admin-field">
+            <label>Prefixo do Título</label>
+            <input value={content.blog_title_prefix || ''} onChange={(e) => onUpdate('blog_title_prefix', e.target.value)} />
+          </div>
+          <div className="admin-field">
+            <label>Destaque do Título</label>
+            <input value={content.blog_title_highlight || ''} onChange={(e) => onUpdate('blog_title_highlight', e.target.value)} />
+          </div>
+          <div className="admin-field">
+            <label>Subtítulo</label>
+            <textarea rows={2} value={content.blog_subtitle || ''} onChange={(e) => onUpdate('blog_subtitle', e.target.value)} />
+          </div>
+          <div className="admin-field">
+            <label>Posts por Página</label>
+            <input value={content.blog_posts_per_page || '10'} onChange={(e) => onUpdate('blog_posts_per_page', e.target.value)} />
+          </div>
+          <div className="admin-field">
+            <label>Mostrar Sidebar (true/false)</label>
+            <input value={content.blog_show_sidebar || 'true'} onChange={(e) => onUpdate('blog_show_sidebar', e.target.value)} />
+          </div>
+        </>
+      )}
 
       <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
 

@@ -55,7 +55,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
           </div>
         )}
 
-        {(isSuperAdmin || isEditorAdmin) && (
+        {(isSuperAdmin || isEditorAdmin || isGestorAdmin) && (
           <div className="admin-card" onClick={() => onNavigate('images')}>
             <div className="admin-card-icon">🖼️</div>
             <div className="admin-card-info">
@@ -75,7 +75,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
           </div>
         )}
 
-        {(isSuperAdmin || isGestorAdmin) && (
+        {isSuperAdmin && (
           <div className="admin-card" onClick={() => onNavigate('historico_alunos')}>
             <div className="admin-card-icon">📋</div>
             <div className="admin-card-info">

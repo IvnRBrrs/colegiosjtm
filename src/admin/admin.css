@@ -764,10 +764,150 @@
 }
 
 /* ===== Messages ===== */
-.admin-messages h2 {
+.admin-messages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.admin-messages-header h2 {
   font-size: 1.4rem;
   color: var(--primary-dark);
-  margin-bottom: 24px;
+  margin: 0;
+}
+.admin-messages-tabs {
+  display: flex;
+  gap: 4px;
+  background: #e8e8ec;
+  border-radius: 8px;
+  padding: 3px;
+}
+.admin-messages-tabs button {
+  background: transparent;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text-light);
+  transition: all 0.2s;
+}
+.admin-messages-tabs button.active {
+  background: white;
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1976d2;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.sidebar-btn-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+}
+.sidebar-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: #e53935;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.msg-row {
+  cursor: pointer;
+}
+.msg-row:hover td {
+  background: #fafafa;
+}
+.admin-message-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 520px;
+  width: 90vw;
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.admin-message-modal h3 {
+  font-size: 1.2rem;
+  color: var(--primary-dark);
+  margin-bottom: 20px;
+  padding-right: 32px;
+}
+.admin-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-light);
+  line-height: 1;
+  padding: 4px;
+}
+.admin-modal-close:hover {
+  color: var(--text);
+}
+.msg-modal-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.msg-modal-row {
+  display: flex;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.msg-modal-label {
+  color: var(--text-light);
+  font-weight: 600;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+.msg-modal-message {
+  margin-bottom: 20px;
+}
+.msg-modal-message .msg-modal-label {
+  display: block;
+  margin-bottom: 8px;
+}
+.msg-modal-message p {
+  background: #f5f5f7;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msg-modal-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* ===== Setup ===== */

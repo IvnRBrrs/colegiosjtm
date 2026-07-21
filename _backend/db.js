@@ -92,6 +92,28 @@ export async function initDb(db) {
       videos TEXT DEFAULT '[]', slug TEXT UNIQUE,
       published INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS contact_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      message TEXT NOT NULL,
+      read INTEGER DEFAULT 0,
+      archived INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS pre_enrollments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      responsavel TEXT NOT NULL,
+      nome_aluno TEXT NOT NULL,
+      idade TEXT DEFAULT '',
+      ano_letivo_atual TEXT DEFAULT '',
+      telefone TEXT DEFAULT '',
+      whatsapp TEXT DEFAULT '',
+      email TEXT NOT NULL,
+      mensagem TEXT DEFAULT '',
+      read INTEGER DEFAULT 0,
+      archived INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')))`,
   ]
 
   console.log('[db.js] Creating tables in batch...')
@@ -241,6 +263,20 @@ export async function initDb(db) {
     }
   } catch (e) {
     console.error('[db.js] Thumbnail migration FAILED:', e.message)
+  }
+
+  // Messages table migration: add archived column if missing
+  try {
+    const msgInfo = await db.execute('PRAGMA table_info(contact_messages)')
+    if (msgInfo.rows.length > 0) {
+      const msgCols = msgInfo.rows.map((r) => r.name)
+      if (!msgCols.includes('archived')) {
+        await db.execute(`ALTER TABLE contact_messages ADD COLUMN archived INTEGER DEFAULT 0`)
+        console.log('[db.js] archived column added to contact_messages')
+      }
+    }
+  } catch (e) {
+    console.error('[db.js] Messages migration FAILED:', e.message)
   }
 
   // Seed alunos fictícios (runs once regardless of migration status)
