@@ -27,6 +27,7 @@ export default function PreMatricula({ content }: PreMatriculaProps) {
     const data = new FormData(form)
     const payload: Record<string, string> = {}
     data.forEach((v, k) => { payload[k] = v as string })
+    payload.source = 'cliente'
     try {
       await api.post('/pre-enrollments', payload)
       setSent(true)
@@ -85,6 +86,30 @@ export default function PreMatricula({ content }: PreMatriculaProps) {
                 <label htmlFor="ano_letivo_atual">Ano Letivo Atual</label>
                 <input type="text" id="ano_letivo_atual" name="ano_letivo_atual" placeholder={content.form_placeholder_ano || '2026'} />
               </div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="serie_desejada">Série Desejada (Ano Letivo Seguinte)</label>
+              <select id="serie_desejada" name="serie_desejada" required>
+                <option value="">Selecione a série</option>
+                <optgroup label="Ensino Fundamental 1">
+                  <option value="1º ano">1º ano</option>
+                  <option value="2º ano">2º ano</option>
+                  <option value="3º ano">3º ano</option>
+                  <option value="4º ano">4º ano</option>
+                  <option value="5º ano">5º ano</option>
+                </optgroup>
+                <optgroup label="Ensino Fundamental 2">
+                  <option value="6º ano">6º ano</option>
+                  <option value="7º ano">7º ano</option>
+                  <option value="8º ano">8º ano</option>
+                  <option value="9º ano">9º ano</option>
+                </optgroup>
+                <optgroup label="Ensino Médio">
+                  <option value="1ª série">1ª série</option>
+                  <option value="2ª série">2ª série</option>
+                  <option value="3ª série">3ª série</option>
+                </optgroup>
+              </select>
             </div>
             <div className="premat-row">
               <div className="form-group">
@@ -151,7 +176,8 @@ export default function PreMatricula({ content }: PreMatriculaProps) {
           font-weight: 600;
         }
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
           padding: 14px 16px;
           border-radius: 8px;
           border: 1px solid var(--border);
@@ -163,7 +189,8 @@ export default function PreMatricula({ content }: PreMatriculaProps) {
           outline: none;
         }
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
           border-color: var(--primary);
           box-shadow: 0 0 0 3px rgba(9,52,106,0.1);
         }

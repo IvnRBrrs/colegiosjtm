@@ -78,27 +78,30 @@ export default function AdminApp() {
   const renderView = () => {
     switch (view) {
       case 'dashboard':
-        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} role={role} />
-      case 'section':
-        return <SectionEditor sectionTitle={sectionTitle} onBack={() => setView('dashboard')} />
+        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} unreadPreEnrollments={unreadPreEnrollments} role={role} />
+
       case 'pages':
         return <PageManager />
-      case 'images':
-        return <ImageLibrary />
+      case 'section':
+        return <SectionEditor sectionTitle={sectionTitle} onBack={() => setView('dashboard')} />
+      case 'alunos':
+        return <div className="admin-messages"><h2>Alunos</h2></div>
       case 'messages':
         return <MessagesList onUnreadChange={setUnreadMessages} />
       case 'pre_enrollments':
         return <PreEnrollmentsList onUnreadChange={setUnreadPreEnrollments} />
+      case 'images':
+        return <ImageLibrary />
+      case 'users':
+        return <UserManager currentUsername={getUsernameFromToken() || ''} />
       case 'backups':
         return <BackupRestore />
       case 'setup':
         return <SetupForm />
-      case 'users':
-        return <UserManager currentUsername={getUsernameFromToken() || ''} />
       case 'historico_alunos':
         return <HistoricoAlunos />
       default:
-        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} role={role} />
+        return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} unreadPreEnrollments={unreadPreEnrollments} role={role} />
     }
   }
 
@@ -178,6 +181,8 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
   })
   const [tab, setTab] = useState<'inbox' | 'archived'>('inbox')
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null)
+  const [msgPage, setMsgPage] = useState(1)
+  const MSG_PAGE_SIZE = 15
 
   useEffect(() => {
     api.get('/messages').then(({ data }) => {
@@ -238,19 +243,22 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
   }
 
   const filtered = messages.filter((m) => tab === 'inbox' ? !m.archived : m.archived)
+  const msgTotalPages = Math.ceil(filtered.length / MSG_PAGE_SIZE) || 1
+  const msgSafePage = Math.min(msgPage, msgTotalPages)
+  const pagedMessages = filtered.slice((msgSafePage - 1) * MSG_PAGE_SIZE, msgSafePage * MSG_PAGE_SIZE)
 
   return (
     <div className="admin-messages">
       <div className="admin-messages-header">
         <h2>Mensagens</h2>
         <div className="admin-messages-tabs">
-          <button className={tab === 'inbox' ? 'active' : ''} onClick={() => setTab('inbox')}>Caixa de Entrada</button>
-          <button className={tab === 'archived' ? 'active' : ''} onClick={() => setTab('archived')}>Arquivadas</button>
+          <button className={tab === 'inbox' ? 'active' : ''} onClick={() => { setTab('inbox'); setMsgPage(1) }}>Caixa de Entrada</button>
+          <button className={tab === 'archived' ? 'active' : ''} onClick={() => { setTab('archived'); setMsgPage(1) }}>Arquivadas</button>
         </div>
       </div>
       {filtered.length === 0 ? (
         <p className="admin-empty">{tab === 'inbox' ? 'Nenhuma mensagem na caixa de entrada.' : 'Nenhuma mensagem arquivada.'}</p>
-      ) : (
+      ) : (<>
         <table className="admin-table">
           <thead>
             <tr>
@@ -263,9 +271,9 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
             </tr>
           </thead>
           <tbody>
-            {filtered.map((m) => (
+            {pagedMessages.map((m) => (
               <tr key={m.id} className={`${!m.read && !m.archived ? 'unread' : ''} msg-row`} onClick={() => openMessage(m)}>
-                <td>{new Date(m.created_at).toLocaleString()}</td>
+                <td>{new Date(m.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
                 <td>
                   {!m.read && !m.archived && <span className="unread-dot" title="Não lida" />}
                   {m.name}
@@ -281,7 +289,14 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
             ))}
           </tbody>
         </table>
-      )}
+          {msgTotalPages > 1 && (
+            <div className="admin-pagination">
+              <button disabled={msgSafePage <= 1} onClick={() => setMsgPage(msgSafePage - 1)}>Anterior</button>
+              <span>Página {msgSafePage} de {msgTotalPages}</span>
+              <button disabled={msgSafePage >= msgTotalPages} onClick={() => setMsgPage(msgSafePage + 1)}>Próximo</button>
+            </div>
+          )}
+      </>)}
 
       {selectedMessage && (
         <div className="admin-modal-overlay" onClick={() => setSelectedMessage(null)}>
@@ -301,7 +316,7 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
               )}
               <div className="msg-modal-row">
                 <span className="msg-modal-label">Data</span>
-                <span>{new Date(selectedMessage.created_at).toLocaleString()}</span>
+                <span>{new Date(selectedMessage.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</span>
               </div>
               <div className="msg-modal-row">
                 <span className="msg-modal-label">Status</span>
@@ -329,12 +344,27 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
 }
 
 function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) => void }) {
+  function formatPhone(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 2) return `(${digits}`
+    if (digits.length <= 7) return `(${digits.slice(0, 2)})${digits.slice(2)}`
+    return `(${digits.slice(0, 2)})${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
   const [items, setItems] = useState<any[]>(() => {
     const cached = getCachedPreEnrollmentsSync()
     return cached || []
   })
   const [tab, setTab] = useState<'inbox' | 'archived'>('inbox')
   const [selected, setSelected] = useState<any | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [prePage, setPrePage] = useState(1)
+  const [serieFilter, setSerieFilter] = useState('')
+  const PRE_PAGE_SIZE = 15
+  const [createForm, setCreateForm] = useState({
+    responsavel: '', nome_aluno: '', idade: '', ano_letivo_atual: '',
+    serie_desejada: '', telefone: '', whatsapp: '', email: '', mensagem: '',
+  })
 
   useEffect(() => {
     api.get('/pre-enrollments').then(({ data }) => {
@@ -394,51 +424,251 @@ function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) =
     }
   }
 
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await api.post('/pre-enrollments', { ...createForm, source: 'admin' })
+      setShowCreateForm(false)
+      setCreateForm({ responsavel: '', nome_aluno: '', idade: '', ano_letivo_atual: '', serie_desejada: '', telefone: '', whatsapp: '', email: '', mensagem: '' })
+      const { data } = await api.get('/pre-enrollments')
+      setItems(data)
+      const unread = data.filter((m: any) => !m.read && !m.archived).length
+      onUnreadChange?.(unread)
+    } catch {
+      alert('Erro ao criar pré-matrícula.')
+    }
+  }
+
+  const refreshData = async () => {
+    setRefreshing(true)
+    try {
+      const { data } = await api.get('/pre-enrollments')
+      setItems(data)
+      const unread = data.filter((m: any) => !m.read && !m.archived).length
+      onUnreadChange?.(unread)
+    } catch {
+      alert('Erro ao atualizar dados.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const handlePrint = () => {
+    const rows = pagedPreEnrollments.map((m) => `
+      <tr>
+        <td>${new Date(m.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
+        <td>${m.responsavel || ''}</td>
+        <td>${m.nome_aluno || ''}</td>
+        <td>${m.serie_desejada || ''}</td>
+        <td>${m.email || ''}</td>
+        <td>${m.whatsapp || '-'}</td>
+        <td>${m.source === 'admin' ? 'Admin' : 'Cliente'}</td>
+      </tr>
+    `).join('')
+    const win = window.open('', '', 'width=900,height=600')
+    if (!win) return
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Pré-Matrículas</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }
+  h2 { margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+  th { background: #eee; }
+  .footer { margin-top: 12px; font-size: 11px; color: #666; }
+</style></head>
+<body>
+  <h2>Pré-Matrículas</h2>
+  <table>
+    <thead><tr>
+      <th>Data</th><th>Responsável</th><th>Aluno</th><th>Série Desejada</th><th>Email</th><th>WhatsApp</th><th>Origem</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">Página ${preSafePage} de ${preTotalPages} — ${new Date().toLocaleString('pt-BR')}</div>
+</body></html>`)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print(); win.close() }, 300)
+  }
+
+  const sourceLabel = (s: string) => {
+    if (s === 'admin') return { text: 'Admin', cls: 'source-admin' }
+    return { text: 'Cliente', cls: 'source-cliente' }
+  }
+
   const filtered = items.filter((m) => tab === 'inbox' ? !m.archived : m.archived)
+  const filteredBySerie = serieFilter ? filtered.filter((m) => m.serie_desejada === serieFilter) : filtered
+  const preTotalPages = Math.ceil(filteredBySerie.length / PRE_PAGE_SIZE) || 1
+  const preSafePage = Math.min(prePage, preTotalPages)
+  const pagedPreEnrollments = filteredBySerie.slice((preSafePage - 1) * PRE_PAGE_SIZE, preSafePage * PRE_PAGE_SIZE)
 
   return (
     <div className="admin-messages">
       <div className="admin-messages-header">
         <h2>Pré-Matrícula</h2>
-        <div className="admin-messages-tabs">
-          <button className={tab === 'inbox' ? 'active' : ''} onClick={() => setTab('inbox')}>Caixa de Entrada</button>
-          <button className={tab === 'archived' ? 'active' : ''} onClick={() => setTab('archived')}>Arquivadas</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="admin-messages-tabs">
+            <button className={tab === 'inbox' ? 'active' : ''} onClick={() => { setTab('inbox'); setPrePage(1) }}>Caixa de Entrada</button>
+            <button className={tab === 'archived' ? 'active' : ''} onClick={() => { setTab('archived'); setPrePage(1) }}>Arquivadas</button>
+          </div>
+          <button className="btn btn-sm btn-primary" onClick={() => setShowCreateForm(true)}>+ Nova</button>
+          <button className="btn btn-sm btn-outline" onClick={refreshData} disabled={refreshing}>{refreshing ? 'Atualizando...' : 'Atualizar'}</button>
+          <button className="btn btn-sm btn-outline" onClick={handlePrint}>Imprimir</button>
         </div>
       </div>
-      {filtered.length === 0 ? (
-        <p className="admin-empty">{tab === 'inbox' ? 'Nenhuma pré-matrícula recebida.' : 'Nenhuma pré-matrícula arquivada.'}</p>
-      ) : (
+
+      {showCreateForm && (
+        <div className="admin-modal-overlay" onClick={() => setShowCreateForm(false)}>
+          <div className="admin-message-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
+            <button className="admin-modal-close" onClick={() => setShowCreateForm(false)}>&times;</button>
+            <h3>Nova Pré-Matrícula (Admin)</h3>
+            <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="admin-row">
+                <div className="admin-field">
+                  <label>Responsável *</label>
+                  <input value={createForm.responsavel} onChange={(e) => setCreateForm({ ...createForm, responsavel: e.target.value })} required />
+                </div>
+                <div className="admin-field">
+                  <label>Nome do Aluno *</label>
+                  <input value={createForm.nome_aluno} onChange={(e) => setCreateForm({ ...createForm, nome_aluno: e.target.value })} required />
+                </div>
+              </div>
+              <div className="admin-row">
+                <div className="admin-field">
+                  <label>Idade</label>
+                  <input value={createForm.idade} onChange={(e) => setCreateForm({ ...createForm, idade: e.target.value })} />
+                </div>
+                <div className="admin-field">
+                  <label>Ano Letivo Atual</label>
+                  <input value={createForm.ano_letivo_atual} onChange={(e) => setCreateForm({ ...createForm, ano_letivo_atual: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-field">
+                <label>Série Desejada (Ano Letivo Seguinte) *</label>
+                <select value={createForm.serie_desejada} onChange={(e) => setCreateForm({ ...createForm, serie_desejada: e.target.value })} required>
+                  <option value="">Selecione a série</option>
+                  <optgroup label="Ensino Fundamental 1">
+                    <option value="1º ano">1º ano</option>
+                    <option value="2º ano">2º ano</option>
+                    <option value="3º ano">3º ano</option>
+                    <option value="4º ano">4º ano</option>
+                    <option value="5º ano">5º ano</option>
+                  </optgroup>
+                  <optgroup label="Ensino Fundamental 2">
+                    <option value="6º ano">6º ano</option>
+                    <option value="7º ano">7º ano</option>
+                    <option value="8º ano">8º ano</option>
+                    <option value="9º ano">9º ano</option>
+                  </optgroup>
+                  <optgroup label="Ensino Médio">
+                    <option value="1ª série">1ª série</option>
+                    <option value="2ª série">2ª série</option>
+                    <option value="3ª série">3ª série</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div className="admin-row">
+                <div className="admin-field">
+                  <label>Telefone</label>
+                  <input type="tel" value={createForm.telefone} onChange={(e) => setCreateForm({ ...createForm, telefone: formatPhone(e.target.value) })} maxLength={14} />
+                </div>
+                <div className="admin-field">
+                  <label>WhatsApp</label>
+                  <input type="tel" value={createForm.whatsapp} onChange={(e) => setCreateForm({ ...createForm, whatsapp: formatPhone(e.target.value) })} maxLength={14} />
+                </div>
+              </div>
+              <div className="admin-field">
+                <label>Email *</label>
+                <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} required />
+              </div>
+              <div className="admin-field">
+                <label>Mensagem</label>
+                <textarea rows={3} value={createForm.mensagem} onChange={(e) => setCreateForm({ ...createForm, mensagem: e.target.value })} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" className="btn btn-sm btn-primary">Salvar</button>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowCreateForm(false)}>Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="admin-filter-bar">
+        <label>Filtrar por Série:</label>
+        <select value={serieFilter} onChange={(e) => { setSerieFilter(e.target.value); setPrePage(1) }}>
+          <option value="">Todas</option>
+          <optgroup label="Ensino Fundamental 1">
+            <option value="1º ano">1º ano</option>
+            <option value="2º ano">2º ano</option>
+            <option value="3º ano">3º ano</option>
+            <option value="4º ano">4º ano</option>
+            <option value="5º ano">5º ano</option>
+          </optgroup>
+          <optgroup label="Ensino Fundamental 2">
+            <option value="6º ano">6º ano</option>
+            <option value="7º ano">7º ano</option>
+            <option value="8º ano">8º ano</option>
+            <option value="9º ano">9º ano</option>
+          </optgroup>
+          <optgroup label="Ensino Médio">
+            <option value="1ª série">1ª série</option>
+            <option value="2ª série">2ª série</option>
+            <option value="3ª série">3ª série</option>
+          </optgroup>
+        </select>
+      </div>
+
+      {filteredBySerie.length === 0 ? (
+        <p className="admin-empty">{serieFilter && filtered.length > 0 ? `Nenhuma pré-matrícula para "${serieFilter}".` : (tab === 'inbox' ? 'Nenhuma pré-matrícula recebida.' : 'Nenhuma pré-matrícula arquivada.')}</p>
+      ) : (<>
         <table className="admin-table">
           <thead>
             <tr>
               <th>Data</th>
               <th>Responsável</th>
               <th>Aluno</th>
+              <th>Série Desejada</th>
               <th>Email</th>
               <th>WhatsApp</th>
+              <th>Origem</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((m) => (
-              <tr key={m.id} className={`${!m.read && !m.archived ? 'unread' : ''} msg-row`} onClick={() => openItem(m)}>
-                <td>{new Date(m.created_at).toLocaleString()}</td>
-                <td>
-                  {!m.read && !m.archived && <span className="unread-dot" title="Não lida" />}
-                  {m.responsavel}
-                </td>
-                <td>{m.nome_aluno}</td>
-                <td>{m.email}</td>
-                <td>{m.whatsapp || '-'}</td>
-                <td onClick={(e) => e.stopPropagation()}>
-                  {tab === 'inbox' && <button className="btn btn-sm" onClick={() => archiveItem(m.id)}>Arquivar</button>}
-                  <button className="btn btn-sm btn-danger" onClick={() => deleteItem(m.id)}>Excluir</button>
-                </td>
-              </tr>
-            ))}
+            {pagedPreEnrollments.map((m) => {
+              const src = sourceLabel(m.source)
+              return (
+                <tr key={m.id} className={`${!m.read && !m.archived ? 'unread' : ''} msg-row`} onClick={() => openItem(m)}>
+                  <td>{new Date(m.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
+                  <td>
+                    {!m.read && !m.archived && <span className="unread-dot" title="Não lida" />}
+                    {m.responsavel}
+                  </td>
+                  <td>{m.nome_aluno}</td>
+                  <td>{m.serie_desejada || '-'}</td>
+                  <td>{m.email}</td>
+                  <td>{m.whatsapp || '-'}</td>
+                  <td><span className={`source-badge ${src.cls}`}>{src.text}</span></td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    {tab === 'inbox' && <button className="btn btn-sm" onClick={() => archiveItem(m.id)}>Arquivar</button>}
+                    <button className="btn btn-sm btn-danger" onClick={() => deleteItem(m.id)}>Excluir</button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
-      )}
+          {preTotalPages > 1 && (
+            <div className="admin-pagination">
+              <button disabled={preSafePage <= 1} onClick={() => setPrePage(preSafePage - 1)}>Anterior</button>
+              <span>Página {preSafePage} de {preTotalPages}</span>
+              <button disabled={preSafePage >= preTotalPages} onClick={() => setPrePage(preSafePage + 1)}>Próximo</button>
+            </div>
+          )}
+      </>)}
 
       {selected && (
         <div className="admin-modal-overlay" onClick={() => setSelected(null)}>
@@ -462,6 +692,12 @@ function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) =
                   <span>{selected.ano_letivo_atual}</span>
                 </div>
               )}
+              {selected.serie_desejada && (
+                <div className="msg-modal-row">
+                  <span className="msg-modal-label">Série Desejada</span>
+                  <span>{selected.serie_desejada}</span>
+                </div>
+              )}
               <div className="msg-modal-row">
                 <span className="msg-modal-label">Email</span>
                 <span>{selected.email}</span>
@@ -479,8 +715,12 @@ function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) =
                 </div>
               )}
               <div className="msg-modal-row">
+                <span className="msg-modal-label">Origem</span>
+                <span><span className={`source-badge ${sourceLabel(selected.source).cls}`}>{sourceLabel(selected.source).text}</span></span>
+              </div>
+              <div className="msg-modal-row">
                 <span className="msg-modal-label">Data</span>
-                <span>{new Date(selected.created_at).toLocaleString()}</span>
+                <span>{new Date(selected.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</span>
               </div>
               <div className="msg-modal-row">
                 <span className="msg-modal-label">Status</span>

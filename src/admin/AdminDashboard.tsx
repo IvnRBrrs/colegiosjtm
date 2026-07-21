@@ -6,10 +6,11 @@ import { ROLES } from '../cms/auth'
 interface AdminDashboardProps {
   onNavigate: (view: string, section?: string) => void
   unreadMessages: number
+  unreadPreEnrollments: number
   role: string | null
 }
 
-export default function AdminDashboard({ onNavigate, unreadMessages, role }: AdminDashboardProps) {
+export default function AdminDashboard({ onNavigate, unreadMessages, unreadPreEnrollments, role }: AdminDashboardProps) {
   const [previewContent, setPreviewContent] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -71,6 +72,16 @@ export default function AdminDashboard({ onNavigate, unreadMessages, role }: Adm
             <div className="admin-card-info">
               <h3>Mensagens {unreadMessages > 0 && <span className="admin-badge">{unreadMessages}</span>}</h3>
               <p>Visualizar mensagens do formulário de contato</p>
+            </div>
+          </div>
+        )}
+
+        {(isSuperAdmin || isGestorAdmin) && (
+          <div className="admin-card" onClick={() => onNavigate('pre_enrollments')}>
+            <div className="admin-card-icon">📝</div>
+            <div className="admin-card-info">
+              <h3>Pré-Matrícula {unreadPreEnrollments > 0 && <span className="admin-badge">{unreadPreEnrollments}</span>}</h3>
+              <p>Gerenciar solicitações de pré-matrícula</p>
             </div>
           </div>
         )}

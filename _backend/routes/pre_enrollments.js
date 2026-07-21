@@ -16,14 +16,14 @@ router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMI
 
 router.post('/', async (req, res) => {
   try {
-    const { responsavel, nome_aluno, idade, ano_letivo_atual, telefone, whatsapp, email, mensagem } = req.body
+    const { responsavel, nome_aluno, idade, ano_letivo_atual, serie_desejada, telefone, whatsapp, email, mensagem, source } = req.body
     if (!responsavel || !nome_aluno || !email) {
       return res.status(400).json({ error: 'responsavel, nome_aluno, and email are required' })
     }
 
     await req.db.execute({
-      sql: 'INSERT INTO pre_enrollments (responsavel, nome_aluno, idade, ano_letivo_atual, telefone, whatsapp, email, mensagem) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [responsavel, nome_aluno, idade || null, ano_letivo_atual || null, telefone || null, whatsapp || null, email, mensagem || null],
+      sql: 'INSERT INTO pre_enrollments (responsavel, nome_aluno, idade, ano_letivo_atual, serie_desejada, telefone, whatsapp, email, mensagem, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [responsavel, nome_aluno, idade || null, ano_letivo_atual || null, serie_desejada || null, telefone || null, whatsapp || null, email, mensagem || null, source || 'cliente'],
     })
 
     res.json({ success: true })
