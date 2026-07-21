@@ -12,7 +12,7 @@ router.get('/preload', authMiddleware, async (req, res) => {
       req.db.execute('SELECT * FROM pages'),
       req.db.execute("SELECT id, title, subtitle, author, date, tags, images, slug, published, created_at FROM blog_posts ORDER BY date DESC LIMIT 50"),
       req.db.execute("SELECT tags FROM blog_posts WHERE tags != '[]'"),
-      req.db.execute('SELECT id, name, email, phone, message, created_at, read FROM messages ORDER BY created_at DESC'),
+      req.db.execute('SELECT id, name, email, phone, message, created_at, read, archived FROM contact_messages ORDER BY created_at DESC'),
     ])
 
     const content = {}

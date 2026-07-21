@@ -1,18 +1,44 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { submitContactMessage } from '../../cms/api'
 
 interface ContatoProps {
   content: Record<string, string>
 }
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+  if (digits.length <= 2) return `(${digits}`
+  if (digits.length <= 7) return `(${digits.slice(0, 2)})${digits.slice(2)}`
+  return `(${digits.slice(0, 2)})${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 export default function Contato({ content }: ContatoProps) {
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+  const [phoneValue, setPhoneValue] = useState('')
   const formRef = useRef<HTMLFormElement>(null!)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSent(true)
-    setTimeout(() => setSent(false), 4000)
+    setError('')
+    const form = e.currentTarget as HTMLFormElement
+    const data = new FormData(form)
+    const payload = {
+      name: data.get('name') as string,
+      email: data.get('email') as string,
+      phone: (data.get('phone') as string) || undefined,
+      message: data.get('message') as string,
+    }
+    try {
+      await submitContactMessage(payload)
+      setSent(true)
+      setPhoneValue('')
+      form.reset()
+      setTimeout(() => setSent(false), 4000)
+    } catch {
+      setError('Erro ao enviar mensagem. Tente novamente.')
+    }
   }
 
   return (
@@ -45,20 +71,20 @@ export default function Contato({ content }: ContatoProps) {
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="name">Nome</label>
-                <input type="text" id="name" placeholder={content.form_placeholder_name || 'Seu nome'} required />
+                <input type="text" id="name" name="name" placeholder={content.form_placeholder_name || 'Seu nome'} required />
               </div>
               <div className="form-group">
                 <label htmlFor="email">Email</label>
-                <input type="email" id="email" placeholder={content.form_placeholder_email || 'seu@email.com'} required />
+                <input type="email" id="email" name="email" placeholder={content.form_placeholder_email || 'seu@email.com'} required />
               </div>
             </div>
             <div className="form-group">
               <label htmlFor="phone">Telefone</label>
-              <input type="tel" id="phone" placeholder={content.form_placeholder_phone || '(82) 99999-9999'} />
+                <input type="tel" id="phone" name="phone" value={phoneValue} onChange={(e) => setPhoneValue(formatPhone(e.target.value))} placeholder={content.form_placeholder_phone || '(82) 99999-9999'} maxLength={14} />
             </div>
             <div className="form-group">
               <label htmlFor="message">Mensagem</label>
-              <textarea id="message" rows={5} placeholder={content.form_placeholder_message || 'Como podemos ajudar?'} required />
+              <textarea id="message" name="message" rows={5} placeholder={content.form_placeholder_message || 'Como podemos ajudar?'} required />
             </div>
             <motion.button
               type="submit"
@@ -73,6 +99,7 @@ export default function Contato({ content }: ContatoProps) {
                 </svg>
               )}
             </motion.button>
+            {error && <p style={{ color: '#d32f2f', fontSize: '0.9rem', marginTop: -12 }}>{error}</p>}
           </form>
 
           <div className="contact-info">

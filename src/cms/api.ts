@@ -103,6 +103,10 @@ export async function fetchMessages() {
   return data
 }
 
+export async function archiveMessage(id: number) {
+  await api.put(`/messages/${id}/archive`)
+}
+
 // Blog
 export async function fetchBlogPosts(params: Record<string, string | number> = {}) {
   const query = new URLSearchParams()

@@ -5,7 +5,7 @@ import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
-router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const result = await req.db.execute('SELECT * FROM contact_messages ORDER BY created_at DESC')
     res.json(rowsToObjects(result.rows, result.columns))
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'UPDATE contact_messages SET read = 1 WHERE id = ?',
@@ -44,7 +44,19 @@ router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDI
   }
 })
 
-router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
+router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
+  try {
+    await req.db.execute({
+      sql: 'UPDATE contact_messages SET archived = 1 WHERE id = ?',
+      args: [req.params.id],
+    })
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
+router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     await req.db.execute({
       sql: 'DELETE FROM contact_messages WHERE id = ?',
