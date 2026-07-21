@@ -7,6 +7,7 @@ import contentRoutes from '../_backend/routes/content.js'
 import pagesRoutes from '../_backend/routes/pages.js'
 import imagesRoutes from '../_backend/routes/images.js'
 import messagesRoutes from '../_backend/routes/messages.js'
+import preEnrollmentsRoutes from '../_backend/routes/pre_enrollments.js'
 import backupsRoutes from '../_backend/routes/backups.js'
 import seedRoutes from '../_backend/routes/seed.js'
 import blogRoutes from '../_backend/routes/blog.js'
@@ -61,6 +62,7 @@ app.use('/api/content', contentRoutes)
 app.use('/api/pages', pagesRoutes)
 app.use('/api/images', imagesRoutes)
 app.use('/api/messages', messagesRoutes)
+app.use('/api/pre-enrollments', preEnrollmentsRoutes)
 app.use('/api/backups', backupsRoutes)
 app.use('/api/seed', seedRoutes)
 app.use('/api/blog', blogRoutes)

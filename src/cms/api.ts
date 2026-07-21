@@ -107,6 +107,11 @@ export async function archiveMessage(id: number) {
   await api.put(`/messages/${id}/archive`)
 }
 
+export async function fetchPreEnrollments() {
+  const { data } = await api.get('/pre-enrollments')
+  return data
+}
+
 // Blog
 export async function fetchBlogPosts(params: Record<string, string | number> = {}) {
   const query = new URLSearchParams()

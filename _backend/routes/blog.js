@@ -82,7 +82,7 @@ router.get('/posts/:id', async (req, res) => {
   }
 })
 
-router.post('/posts', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG), async (req, res) => {
+router.post('/posts', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const { title, subtitle, content, author, date, tags, images, videos } = req.body
     if (!title) return res.status(400).json({ error: 'Title is required' })
@@ -120,7 +120,7 @@ router.post('/posts', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITO
   }
 })
 
-router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG), async (req, res) => {
+router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const { title, subtitle, content, author, date, tags, images, videos, published } = req.body
     const existing = await req.db.execute({
@@ -167,7 +167,7 @@ router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.ED
   }
 })
 
-router.delete('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG), async (req, res) => {
+router.delete('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const result = await req.db.execute({
       sql: 'DELETE FROM blog_posts WHERE id = ?',

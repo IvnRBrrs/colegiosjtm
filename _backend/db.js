@@ -101,6 +101,19 @@ export async function initDb(db) {
       read INTEGER DEFAULT 0,
       archived INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS pre_enrollments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      responsavel TEXT NOT NULL,
+      nome_aluno TEXT NOT NULL,
+      idade TEXT DEFAULT '',
+      ano_letivo_atual TEXT DEFAULT '',
+      telefone TEXT DEFAULT '',
+      whatsapp TEXT DEFAULT '',
+      email TEXT NOT NULL,
+      mensagem TEXT DEFAULT '',
+      read INTEGER DEFAULT 0,
+      archived INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')))`,
   ]
 
   console.log('[db.js] Creating tables in batch...')
