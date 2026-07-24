@@ -58,6 +58,12 @@ router.post('/login', async (req, res) => {
     const role = user.role || ROLES.SUPER_ADMIN
     const mustChangePassword = !!user.must_change_password
     const token = generateToken(username, role)
+
+    await req.db.execute({
+      sql: 'INSERT INTO login_log (username, ip) VALUES (?, ?)',
+      args: [username, (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim()],
+    })
+
     res.json({ token, role, mustChangePassword })
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -232,6 +238,44 @@ router.delete('/users/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN), asyn
   try {
     await req.db.execute({
       sql: 'DELETE FROM users WHERE id = ?',
+      args: [req.params.id],
+    })
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
+router.get('/login-log', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
+  try {
+    const result = await req.db.execute('SELECT * FROM login_log ORDER BY login_time DESC')
+    const logs = rowsToObjects(result.rows, result.columns)
+
+    const enriched = []
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i]
+      let duration = ''
+      const next = logs.slice(0, i).find((l) => l.username === log.username)
+      if (next) {
+        const diffMs = new Date(next.login_time.replace(' ', 'T') + 'Z').getTime() - new Date(log.login_time.replace(' ', 'T') + 'Z').getTime()
+        const mins = Math.floor(diffMs / 60000)
+        if (mins < 1) duration = '< 1 min'
+        else if (mins < 60) duration = `${mins} min`
+        else duration = `${Math.floor(mins / 60)}h ${mins % 60}min`
+      }
+      enriched.push({ ...log, duration })
+    }
+
+    res.json(enriched)
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
+router.delete('/login-log/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
+  try {
+    await req.db.execute({
+      sql: 'DELETE FROM login_log WHERE id = ?',
       args: [req.params.id],
     })
     res.json({ success: true })

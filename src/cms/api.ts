@@ -171,3 +171,13 @@ export async function fetchBackups(section_key: string) {
   const { data } = await api.get(`/backups/${section_key}`)
   return data
 }
+
+// Login Log
+export async function fetchLoginLog() {
+  const { data } = await api.get('/auth/login-log')
+  return data
+}
+
+export async function deleteLoginLog(id: number) {
+  await api.delete(`/auth/login-log/${id}`)
+}
