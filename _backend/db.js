@@ -115,6 +115,11 @@ export async function initDb(db) {
       read INTEGER DEFAULT 0,
       archived INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS login_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      login_time TEXT DEFAULT (datetime('now')),
+      ip TEXT DEFAULT '')`,
   ]
 
   console.log('[db.js] Creating tables in batch...')

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../cms/api'
 import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos } from './index'
 import { getRoleFromToken, getUsernameFromToken, ROLES } from '../cms/auth'
-import { fetchAdminPreload } from '../cms/api'
+import { fetchAdminPreload, fetchLoginLog, deleteLoginLog } from '../cms/api'
 import { seedCache, getCachedMessagesSync, getCachedPreEnrollmentsSync } from '../cms/contentCache'
 import ChangePasswordModal from './ChangePasswordModal'
 
@@ -67,10 +67,104 @@ export default function AdminApp() {
     }
   }
 
+  // Auto-logout por inatividade (10 min)
+  const lastActivityRef = useRef(Date.now())
+  const INACTIVITY_TIMEOUT = 10 * 60 * 1000
+  const CHECK_INTERVAL = 10 * 1000
+
+  useEffect(() => {
+    if (!token) return
+
+    const update = () => { lastActivityRef.current = Date.now() }
+
+    window.addEventListener('mousedown', update)
+    window.addEventListener('keydown', update)
+    window.addEventListener('click', update)
+    window.addEventListener('touchstart', update)
+    window.addEventListener('mousemove', update, { passive: true })
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('wheel', update, { passive: true })
+
+    const id = setInterval(() => {
+      if (Date.now() - lastActivityRef.current > INACTIVITY_TIMEOUT) {
+        handleLogout()
+      }
+    }, CHECK_INTERVAL)
+
+    return () => {
+      window.removeEventListener('mousedown', update)
+      window.removeEventListener('keydown', update)
+      window.removeEventListener('click', update)
+      window.removeEventListener('touchstart', update)
+      window.removeEventListener('mousemove', update)
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('wheel', update)
+      clearInterval(id)
+    }
+  }, [token])
+
   if (!token) {
     return (
       <div className="admin-wrapper">
         <AdminLogin onLogin={handleLogin} />
+      </div>
+    )
+  }
+
+  function LoginLog() {
+    const [logs, setLogs] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+      fetchLoginLog().then((data) => { setLogs(data); setLoading(false) }).catch(() => setLoading(false))
+    }, [])
+
+    const handleDelete = async (id: number) => {
+      if (!confirm('Excluir este registro de log?')) return
+      try {
+        await deleteLoginLog(id)
+        setLogs((prev) => prev.filter((l) => l.id !== id))
+      } catch {
+        alert('Erro ao excluir log.')
+      }
+    }
+
+    if (loading) return <div className="admin-messages"><h2>Log de Acesso</h2><p>Carregando...</p></div>
+
+    return (
+      <div className="admin-messages">
+        <div className="admin-messages-header">
+          <h2>Log de Acesso</h2>
+          <p style={{ fontSize: '0.85rem', color: '#666' }}>Registro de logins — super_admin</p>
+        </div>
+        {logs.length === 0 ? (
+          <p className="admin-empty">Nenhum registro de login encontrado.</p>
+        ) : (
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Data/Hora</th>
+                <th>IP</th>
+                <th>Duração</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log: any) => (
+                <tr key={log.id}>
+                  <td>{log.username}</td>
+                  <td>{new Date(log.login_time.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
+                  <td>{log.ip || '-'}</td>
+                  <td>{log.duration || 'Em andamento'}</td>
+                  <td>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(log.id)}>Excluir</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     )
   }
@@ -100,6 +194,8 @@ export default function AdminApp() {
         return <SetupForm />
       case 'historico_alunos':
         return <HistoricoAlunos />
+      case 'login_log':
+        return <LoginLog />
       default:
         return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} unreadPreEnrollments={unreadPreEnrollments} role={role} />
     }
@@ -152,6 +248,7 @@ export default function AdminApp() {
             <>
               <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>
               <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>Setup</button>
+              <button className={view === 'login_log' ? 'active' : ''} onClick={() => setView('login_log')}>Log de Acesso</button>
             </>
           ) : null}
         </nav>
@@ -289,13 +386,13 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
             ))}
           </tbody>
         </table>
-          {msgTotalPages > 1 && (
-            <div className="admin-pagination">
-              <button disabled={msgSafePage <= 1} onClick={() => setMsgPage(msgSafePage - 1)}>Anterior</button>
-              <span>Página {msgSafePage} de {msgTotalPages}</span>
-              <button disabled={msgSafePage >= msgTotalPages} onClick={() => setMsgPage(msgSafePage + 1)}>Próximo</button>
-            </div>
-          )}
+        {msgTotalPages > 1 && (
+          <div className="admin-pagination">
+            <button disabled={msgSafePage <= 1} onClick={() => setMsgPage(msgSafePage - 1)}>Anterior</button>
+            <span>Página {msgSafePage} de {msgTotalPages}</span>
+            <button disabled={msgSafePage >= msgTotalPages} onClick={() => setMsgPage(msgSafePage + 1)}>Próximo</button>
+          </div>
+        )}
       </>)}
 
       {selectedMessage && (
@@ -661,13 +758,13 @@ function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) =
             })}
           </tbody>
         </table>
-          {preTotalPages > 1 && (
-            <div className="admin-pagination">
-              <button disabled={preSafePage <= 1} onClick={() => setPrePage(preSafePage - 1)}>Anterior</button>
-              <span>Página {preSafePage} de {preTotalPages}</span>
-              <button disabled={preSafePage >= preTotalPages} onClick={() => setPrePage(preSafePage + 1)}>Próximo</button>
-            </div>
-          )}
+        {preTotalPages > 1 && (
+          <div className="admin-pagination">
+            <button disabled={preSafePage <= 1} onClick={() => setPrePage(preSafePage - 1)}>Anterior</button>
+            <span>Página {preSafePage} de {preTotalPages}</span>
+            <button disabled={preSafePage >= preTotalPages} onClick={() => setPrePage(preSafePage + 1)}>Próximo</button>
+          </div>
+        )}
       </>)}
 
       {selected && (
