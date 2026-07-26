@@ -27,11 +27,28 @@ const defaultDisciplinas = [
     { nome: 'FILOSOFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '8,0/40', n9: '9,0/50', m1: '8,0/50', m2: '', m3: '', ano: '2025', serie: '1º SÉRIE', escola: 'COLÉGIO SÃO JUDAS\nTADEU', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
 ];
 
+function formatDateBR(val: string): string {
+    if (!val) return val
+    const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        const [y, m, d] = val.split('-')
+        return `${parseInt(d)} DE ${meses[parseInt(m) - 1]} DE ${y}`
+    }
+    const d = new Date(val.replace(' ', 'T'))
+    if (!isNaN(d.getTime())) {
+        const dia = d.getDate()
+        const mes = meses[d.getMonth()]
+        const ano = d.getFullYear()
+        return `${dia} DE ${mes} DE ${ano}`
+    }
+    return val
+}
+
 export const PDFPreview = ({ data }: { data: HistoricoData }) => {
-    const aluno = data?.aluno || 'NICOLAS ARAUJO ROCHA';
-    const nascimento = data?.nascimento || '16 DE DEZEMBRO DE 2001';
-    const pai = data?.pai || 'EDNALDO SANTOS ROCHA';
-    const mae = data?.mae || 'NYDIA DE PAULA ARAUJO DE SEIXAS';
+    const aluno = data?.aluno || '';
+    const nascimento = data?.nascimento ? formatDateBR(data.nascimento) : '16 DE DEZEMBRO DE 2001';
+    const pai = data?.pai || '';
+    const mae = data?.mae || '';
     const naturalidade = data?.naturalidade || 'MACEIÓ/AL';
     const disciplinas = (data?.disciplinas && data.disciplinas.length > 0) ? data.disciplinas : defaultDisciplinas;
 
@@ -42,6 +59,8 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                     border-width: 0;
                     border-style: solid;
                     border-color: currentColor;
+                    print-color-adjust: exact;
+                    -webkit-print-color-adjust: exact;
                 }
                 .pdf-preview-container .border {
                     border-width: 1px;
@@ -140,7 +159,7 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">6°/7°/CH</div>
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">7°/8°/CH</div>
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">8°/9°/CH</div>
-                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">1ª SÉRIE/CH</div>
+                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">1ª SÉRIE</div>
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">2ª SÉRIE</div>
                         <div className="flex-1 flex items-center justify-center text-[8px] font-semibold">3ª SÉRIE</div>
                     </div>

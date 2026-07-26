@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { PDFPreview, HistoricoData } from './PDFPreview'
+import api from '../cms/api'
 
 const disciplinaFields: { key: string; label: string }[] = [
   { key: 'nome', label: 'Disciplina' },
@@ -19,27 +20,52 @@ function emptyDisciplina() {
 }
 
 const defaultDisciplinas = [
-  { nome: 'LÍNGUA PORTUGUESA', n1: '-', n2: 'A', n3: '9,5', n4: '-', n5: '9,0', n6: '10,0/200', n7: '9,0/200', n8: '7,5/200', n9: '7,5/200', m1: '9,3/100', m2: '', m3: '', ano: '2015', serie: '1º ANO', escola: 'ESCOLA DE ENS. FUND.\nNIKOLAS PANOS', cidade: 'MACEIÓ/AL', sit: 'APC' },
-  { nome: 'MATEMÁTICA', n1: '-', n2: '-', n3: '6,5', n4: '-', n5: '8,0', n6: '9,0/200', n7: '9,0/200', n8: '7,5/200', n9: '6,0/200', m1: '6,9/100', m2: '', m3: '', ano: '2016', serie: '1º/2º', escola: 'ESCOLA DE ENS. FUND.\nNIKOLAS PANOS', cidade: 'MACEIÓ/AL', sit: 'APC' },
-  { nome: 'HISTÓRIA', n1: '-', n2: '-', n3: '9,5', n4: '-', n5: '9,0', n6: '8,0/80', n7: '8,5/80', n8: '8,0/80', n9: '9,0/80', m1: '8,9/66,4', m2: '', m3: '', ano: '2017', serie: '2º/3º', escola: 'ESCOLA TIA HELENA', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-  { nome: 'GEOGRAFIA', n1: '-', n2: '-', n3: '9,5', n4: '-', n5: '9,0', n6: '9,5/80', n7: '9,5/80', n8: '8,0/80', n9: '9,5/80', m1: '9,0/66,4', m2: '', m3: '', ano: '2018', serie: '3º/4º', escola: 'ESCOLA TIA HELENA', cidade: 'MACEIÓ/AL', sit: 'APC' },
-  { nome: 'CIÊNCIAS', n1: 'A', n2: 'A', n3: '10,0', n4: 'A', n5: '9,0', n6: '10,0/80', n7: '8,0/80', n8: '7,0/80', n9: '7,5/80', m1: '', m2: '', m3: '', ano: '2019', serie: '4º/5º', escola: 'ESCOLA DE ED. BÁSICA\nDIANTE DO TRONO', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-  { nome: 'ARTES', n1: '-', n2: '-', n3: '9,5', n4: 'P', n5: '10,0', n6: '10,0/40', n7: '8,5/40', n8: '9,0/50', n9: '8,5/50', m1: '8,6/33,2', m2: '', m3: '', ano: '2020', serie: '5º/6º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-  { nome: 'L.E.M. INGLÊS', n1: '-', n2: 'A', n3: '10,0', n4: 'C', n5: '9,0', n6: '8,5/80', n7: '9,0/80', n8: '9,0/80', n9: '8,0/80', m1: '8,9/33,2', m2: '', m3: '', ano: '2021', serie: '6º/7º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-  { nome: 'CIDADANIA', n1: '-', n2: 'P', n3: '-', n4: 'P', n5: '-', n6: '10,0/40', n7: '10,0/40', n8: '9,5/50', n9: '-', m1: '', m2: '', m3: '', ano: '2022', serie: '7º/8º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-  { nome: 'EDUCAÇÃO FÍSICA', n1: '-', n2: 'C', n3: '10,0', n4: 'C', n5: '10,0', n6: '9,0/40', n7: '10,0/40', n8: '8,0/50', n9: '8,0/50', m1: '10,0/33,2', m2: '', m3: '', ano: '2023', serie: '8º/9º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-  { nome: 'FILOSOFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '8,0/40', n9: '9,0/50', m1: '8,0/50', m2: '', m3: '', ano: '2025', serie: '1º SÉRIE', escola: 'COLÉGIO SÃO JUDAS\nTADEU', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
+  { nome: 'LÍNGUA PORTUGUESA', n1: '-', n2: 'A', n3: '9,5', n4: '-', n5: '9,0', n6: '10,0/200', n7: '9,0/200', n8: '7,5/200', n9: '7,5/200', m1: '9,3/100', m2: '', m3: '', ano: '2015', serie: '1º/2º', escola: 'ESCOLA DE ENS. FUND.\nNIKOLAS PANOS', cidade: 'MACEIÓ/AL', sit: 'APC' },
+  { nome: 'MATEMÁTICA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'HISTÓRIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'GEOGRAFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'CIÊNCIAS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'ARTES', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'L.E.M. INGLÊS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'CIDADANIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'EDUCAÇÃO FÍSICA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'FILOSOFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
 ]
 
-function HistoricoEditor() {
-  const [aluno, setAluno] = useState('NICOLAS ARAUJO ROCHA')
+function formatDataExtenso(val: string): string {
+  if (!val) return ''
+  const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-')
+    return `${parseInt(d)} DE ${meses[parseInt(m) - 1]} DE ${y}`
+  }
+  return val
+}
+
+function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null }) {
+  const [aluno, setAluno] = useState('')
   const [nascimento, setNascimento] = useState('16 DE DEZEMBRO DE 2001')
-  const [pai, setPai] = useState('EDNALDO SANTOS ROCHA')
-  const [mae, setMae] = useState('NYDIA DE PAULA ARAUJO DE SEIXAS')
+  const [pai, setPai] = useState('')
+  const [mae, setMae] = useState('')
   const [naturalidade, setNaturalidade] = useState('MACEIÓ/AL')
   const [disciplinas, setDisciplinas] = useState<any[]>(defaultDisciplinas.map((d) => ({ ...d })))
   const [showEditor, setShowEditor] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selectedAlunoId, setSelectedAlunoId] = useState<string | null>(null)
+  const [selectedAlunoNome, setSelectedAlunoNome] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (initialAlunoId) {
+      loadAluno(initialAlunoId)
+    }
+  }, [initialAlunoId])
 
   const updateDisciplina = (idx: number, key: string, value: string) => {
     setDisciplinas((prev) => {
@@ -71,6 +97,89 @@ function HistoricoEditor() {
     setDisciplinas(defaultDisciplinas.map((d) => ({ ...d })))
   }
 
+  const handleSearchAluno = async () => {
+    if (!searchTerm.trim()) return
+    setSearching(true)
+    setSearchResults([])
+    try {
+      const { data } = await api.get(`/historico-alunos?search=${encodeURIComponent(searchTerm.trim())}`)
+      setSearchResults(data)
+    } catch {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const loadAluno = async (id: string) => {
+    try {
+      const { data } = await api.get(`/historico-alunos/${id}`)
+      const a = data.aluno
+      if (!a) return
+      setAluno(a.nome || '')
+      setNascimento(a.data_nascimento || '')
+      setPai(a.nome_pai || '')
+      setMae(a.nome_mae || '')
+      setNaturalidade(a.naturalidade || '')
+      if (a.disciplinas) {
+        try {
+          const parsed = JSON.parse(a.disciplinas)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setDisciplinas(parsed)
+          }
+        } catch { }
+      }
+      setSelectedAlunoId(id)
+      setSelectedAlunoNome(a.nome || '')
+      setSaveMsg('')
+      setSearchResults([])
+      setSearchTerm(a.nome || '')
+    } catch {
+      setSaveMsg('Erro ao carregar aluno')
+    }
+  }
+
+  const handleSaveAluno = async () => {
+    if (!aluno.trim()) return
+    setSaving(true)
+    setSaveMsg('')
+    try {
+      const body = {
+        nome: aluno,
+        data_nascimento: nascimento,
+        nome_pai: pai,
+        nome_mae: mae,
+        naturalidade: naturalidade,
+        disciplinas: JSON.stringify(disciplinas.filter((d) => d.nome)),
+      }
+      if (selectedAlunoId) {
+        await api.put(`/historico-alunos/${selectedAlunoId}`, body)
+        setSaveMsg('Dados atualizados com sucesso!')
+      } else {
+        const res = await api.post('/historico-alunos', body)
+        setSelectedAlunoId(res.data.id)
+        setSaveMsg('Aluno salvo com sucesso!')
+      }
+      setSelectedAlunoNome(aluno)
+    } catch (err: any) {
+      setSaveMsg(err.response?.data?.error || 'Erro ao salvar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearchAluno()
+  }
+
+  const clearSelection = () => {
+    setSelectedAlunoId(null)
+    setSelectedAlunoNome('')
+    setSearchTerm('')
+    setSearchResults([])
+    setSaveMsg('')
+  }
+
   return (
     <div className="historico-editor">
       <div className="historico-editor-print-area">
@@ -84,31 +193,93 @@ function HistoricoEditor() {
           </div>
         </div>
 
+        <div className="historico-aluno-persist">
+          <div className="historico-aluno-search-row">
+            <div className="admin-field" style={{ flex: 1, position: 'relative' }} ref={searchRef}>
+              <label>Buscar aluno cadastrado</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Digite o nome do aluno..."
+                  style={{ flex: 1 }}
+                />
+                <button className="btn btn-sm btn-primary" onClick={handleSearchAluno} disabled={searching}>
+                  {searching ? '...' : 'Buscar'}
+                </button>
+                {selectedAlunoId && (
+                  <button className="btn btn-sm btn-outline" onClick={clearSelection}>Limpar</button>
+                )}
+              </div>
+            </div>
+            <div className="admin-field" style={{ alignSelf: 'flex-end' }}>
+              <label>&nbsp;</label>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={handleSaveAluno}
+                disabled={saving || !aluno.trim()}
+                style={{ minWidth: 140 }}
+              >
+                {saving ? 'Salvando...' : selectedAlunoId ? 'Atualizar Dados' : 'Salvar Novo Aluno'}
+              </button>
+            </div>
+          </div>
+
+          {searchResults.length > 0 && (
+            <div className="historico-search-results">
+              {searchResults.map((a: any) => (
+                <div
+                  key={a.id}
+                  className="historico-search-item"
+                  onClick={() => loadAluno(a.id)}
+                >
+                  <strong>{a.nome}</strong>
+                  {a.data_nascimento && <span className="text-muted"> — {a.data_nascimento}</span>}
+                  {a.cpf && <span className="text-muted"> • {a.cpf}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedAlunoNome && (
+            <div className="historico-aluno-selected">
+              Aluno selecionado: <strong>{selectedAlunoNome}</strong>
+              {saveMsg && <span className={saveMsg.includes('sucesso') ? 'text-success' : 'text-danger'}> — {saveMsg}</span>}
+            </div>
+          )}
+          {saveMsg && !selectedAlunoNome && (
+            <div className="historico-aluno-selected">
+              <span className={saveMsg.includes('sucesso') ? 'text-success' : 'text-danger'}>{saveMsg}</span>
+            </div>
+          )}
+        </div>
+
         <div className="historico-student-form">
           <div className="historico-form-row">
             <div className="admin-field">
               <label>Aluno</label>
-              <input value={aluno} onChange={(e) => setAluno(e.target.value)} />
+              <span className="historico-display-field">{aluno || '-'}</span>
             </div>
             <div className="admin-field">
               <label>Nascimento</label>
-              <input value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+              <span className="historico-display-field">{formatDataExtenso(nascimento) || '-'}</span>
             </div>
           </div>
           <div className="historico-form-row">
             <div className="admin-field">
               <label>Pai</label>
-              <input value={pai} onChange={(e) => setPai(e.target.value)} />
+              <span className="historico-display-field">{pai || '-'}</span>
             </div>
             <div className="admin-field">
               <label>Mãe</label>
-              <input value={mae} onChange={(e) => setMae(e.target.value)} />
+              <span className="historico-display-field">{mae || '-'}</span>
             </div>
           </div>
           <div className="historico-form-row">
             <div className="admin-field">
               <label>Naturalidade</label>
-              <input value={naturalidade} onChange={(e) => setNaturalidade(e.target.value)} />
+              <span className="historico-display-field">{naturalidade || '-'}</span>
             </div>
             <div className="admin-field" style={{ justifyContent: 'flex-end' }}>
               <label>&nbsp;</label>
@@ -267,6 +438,65 @@ function HistoricoEditor() {
             border-radius: 8px;
             overflow: auto;
           }
+          .historico-display-field {
+            display: block;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.9rem;
+            line-height: 1.4;
+            min-height: 20px;
+          }
+
+          .historico-aluno-persist {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+          }
+          .historico-aluno-search-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+          }
+          .historico-aluno-search-row > .admin-field {
+            margin-bottom: 0;
+          }
+          .historico-search-results {
+            margin-top: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          }
+          .historico-search-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+          }
+          .historico-search-item:last-child {
+            border-bottom: none;
+          }
+          .historico-search-item:hover {
+            background: var(--primary-light, #ebf5ff);
+          }
+          .historico-aluno-selected {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--text);
+            padding: 6px 0;
+          }
+          .text-success { color: #28a745; }
+          .text-danger { color: #dc3545; }
+          .text-muted { color: #888; }
 
           @media print {
             body * {

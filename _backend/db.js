@@ -303,6 +303,44 @@ export async function initDb(db) {
     console.error('[db.js] Pre-enrollments migration FAILED:', e.message)
   }
 
+  // V3 migration: add naturalidade and disciplinas columns to alunos
+  try {
+    const v3Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v3'`)
+    if (v3Check.rows.length === 0) {
+      const alunosInfo = await db.execute('PRAGMA table_info(alunos)')
+      const alunosCols = alunosInfo.rows.map((r) => r.name)
+      if (!alunosCols.includes('naturalidade')) {
+        await db.execute(`ALTER TABLE alunos ADD COLUMN naturalidade TEXT DEFAULT ''`)
+        console.log('[db.js] naturalidade column added')
+      }
+      if (!alunosCols.includes('disciplinas')) {
+        await db.execute(`ALTER TABLE alunos ADD COLUMN disciplinas TEXT DEFAULT ''`)
+        console.log('[db.js] disciplinas column added')
+      }
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v3', '1')`)
+      console.log('[db.js] Migration V3 complete')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V3 FAILED:', e.message)
+  }
+
+  // V4 migration: add periodo column to alunos
+  try {
+    const v4Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v4'`)
+    if (v4Check.rows.length === 0) {
+      const alunosInfo = await db.execute('PRAGMA table_info(alunos)')
+      const alunosCols = alunosInfo.rows.map((r) => r.name)
+      if (!alunosCols.includes('periodo')) {
+        await db.execute(`ALTER TABLE alunos ADD COLUMN periodo TEXT DEFAULT ''`)
+        console.log('[db.js] periodo column added')
+      }
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v4', '1')`)
+      console.log('[db.js] Migration V4 complete')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V4 FAILED:', e.message)
+  }
+
   // Seed alunos fictícios (runs once regardless of migration status)
   try {
     const seedCheck = await db.execute(`SELECT value FROM content WHERE key = '_seed_alunos_version'`)
