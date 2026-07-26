@@ -341,6 +341,23 @@ export async function initDb(db) {
     console.error('[db.js] Migration V4 FAILED:', e.message)
   }
 
+  // V5 migration: add carga_horaria column to alunos
+  try {
+    const v5Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v5'`)
+    if (v5Check.rows.length === 0) {
+      const alunosInfo = await db.execute('PRAGMA table_info(alunos)')
+      const alunosCols = alunosInfo.rows.map((r) => r.name)
+      if (!alunosCols.includes('carga_horaria')) {
+        await db.execute(`ALTER TABLE alunos ADD COLUMN carga_horaria TEXT DEFAULT ''`)
+        console.log('[db.js] carga_horaria column added')
+      }
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v5', '1')`)
+      console.log('[db.js] Migration V5 complete')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V5 FAILED:', e.message)
+  }
+
   // Seed alunos fictícios (runs once regardless of migration status)
   try {
     const seedCheck = await db.execute(`SELECT value FROM content WHERE key = '_seed_alunos_version'`)

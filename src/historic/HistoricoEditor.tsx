@@ -12,6 +12,21 @@ const disciplinaFields: { key: string; label: string }[] = [
   { key: 'cidade', label: 'Cidade' }, { key: 'sit', label: 'Sit.' },
 ]
 
+const cargaHorariaFields: { key: string; label: string }[] = [
+  { key: 'nome', label: 'Descrição' },
+  { key: 'n1', label: 'N1' }, { key: 'n2', label: 'N2' }, { key: 'n3', label: 'N3' },
+  { key: 'n4', label: 'N4' }, { key: 'n5', label: 'N5' }, { key: 'n6', label: 'N6' },
+  { key: 'n7', label: 'N7' }, { key: 'n8', label: 'N8' }, { key: 'n9', label: 'N9' },
+  { key: 'm1', label: 'M1' }, { key: 'm2', label: 'M2' }, { key: 'm3', label: 'M3' },
+]
+
+function emptyCarga() {
+  return {
+    nome: '', n1: '', n2: '', n3: '', n4: '', n5: '', n6: '', n7: '', n8: '', n9: '',
+    m1: '', m2: '', m3: '', ano: '', serie: '', escola: '', cidade: '', sit: '',
+  }
+}
+
 function emptyDisciplina() {
   return {
     nome: '', n1: '', n2: '', n3: '', n4: '', n5: '', n6: '', n7: '', n8: '', n9: '',
@@ -32,6 +47,13 @@ const defaultDisciplinas = [
   { nome: 'FILOSOFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
 ]
 
+const defaultCargaHoraria = [
+  { nome: 'MENÇÃO FINAL', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'MÉDIA GLOBAL', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'DIAS LETIVOS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+  { nome: 'TOTAL DE HORAS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+]
+
 function formatDataExtenso(val: string): string {
   if (!val) return ''
   const meses = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
@@ -49,7 +71,9 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
   const [mae, setMae] = useState('')
   const [naturalidade, setNaturalidade] = useState('MACEIÓ/AL')
   const [disciplinas, setDisciplinas] = useState<any[]>(defaultDisciplinas.map((d) => ({ ...d })))
+  const [cargaHoraria, setCargaHoraria] = useState<any[]>(defaultCargaHoraria.map((c) => ({ ...c })))
   const [showEditor, setShowEditor] = useState(false)
+  const [showCargaEditor, setShowCargaEditor] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState('')
@@ -84,9 +108,27 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
     setDisciplinas((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  const updateCargaHoraria = (idx: number, key: string, value: string) => {
+    setCargaHoraria((prev) => {
+      const next = [...prev]
+      next[idx] = { ...next[idx], [key]: value }
+      return next
+    })
+  }
+
+  const addCargaRow = () => {
+    setCargaHoraria((prev) => [...prev, emptyCarga()])
+  }
+
+  const removeCargaRow = (idx: number) => {
+    if (cargaHoraria.length <= 1) return
+    setCargaHoraria((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   const data: HistoricoData = {
     aluno, nascimento, pai, mae, naturalidade,
     disciplinas: disciplinas.filter((d) => d.nome),
+    cargaHoraria: cargaHoraria.filter((c) => c.nome),
   }
 
   const handlePrint = () => {
@@ -95,6 +137,7 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
 
   const fillSample = () => {
     setDisciplinas(defaultDisciplinas.map((d) => ({ ...d })))
+    setCargaHoraria(defaultCargaHoraria.map((c) => ({ ...c })))
   }
 
   const handleSearchAluno = async () => {
@@ -126,8 +169,24 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
           const parsed = JSON.parse(a.disciplinas)
           if (Array.isArray(parsed) && parsed.length > 0) {
             setDisciplinas(parsed)
+          } else {
+            setDisciplinas(defaultDisciplinas.map((d) => ({ ...d })))
           }
-        } catch { }
+        } catch { setDisciplinas(defaultDisciplinas.map((d) => ({ ...d }))) }
+      } else {
+        setDisciplinas(defaultDisciplinas.map((d) => ({ ...d })))
+      }
+      if (a.carga_horaria) {
+        try {
+          const parsed = JSON.parse(a.carga_horaria)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCargaHoraria(parsed)
+          } else {
+            setCargaHoraria(defaultCargaHoraria.map((c) => ({ ...c })))
+          }
+        } catch { setCargaHoraria(defaultCargaHoraria.map((c) => ({ ...c }))) }
+      } else {
+        setCargaHoraria(defaultCargaHoraria.map((c) => ({ ...c })))
       }
       setSelectedAlunoId(id)
       setSelectedAlunoNome(a.nome || '')
@@ -151,6 +210,7 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
         nome_mae: mae,
         naturalidade: naturalidade,
         disciplinas: JSON.stringify(disciplinas.filter((d) => d.nome)),
+        carga_horaria: JSON.stringify(cargaHoraria.filter((c) => c.nome)),
       }
       if (selectedAlunoId) {
         await api.put(`/historico-alunos/${selectedAlunoId}`, body)
@@ -287,6 +347,9 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
                 <button className="btn btn-sm btn-outline" onClick={() => setShowEditor(!showEditor)}>
                   {showEditor ? 'Fechar Disciplinas' : 'Editar Disciplinas'}
                 </button>
+                <button className="btn btn-sm btn-outline" onClick={() => setShowCargaEditor(!showCargaEditor)}>
+                  {showCargaEditor ? 'Fechar Carga Horária' : 'Editar Carga Horária'}
+                </button>
                 <button className="btn btn-sm btn-outline" onClick={fillSample}>Carregar Exemplo</button>
               </div>
             </div>
@@ -339,6 +402,49 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
               ))}
             </div>
             <button className="btn btn-sm btn-primary" onClick={addRow} style={{ marginTop: 8 }}>+ Adicionar Disciplina</button>
+          </div>
+        )}
+
+        {showCargaEditor && (
+          <div className="historico-disciplinas-editor">
+            <h3>Carga Horária ({cargaHoraria.length})</h3>
+            <div className="historico-disciplinas-grid">
+              <div className="historico-disciplina-row ml-7 mb-3 font-bold">
+                <span className="historico-cell-input">DESCRIÇÃO</span>
+                <span className="historico-cell-input">1° ANO</span>
+                <span className="historico-cell-input">1°/2°</span>
+                <span className="historico-cell-input">2°/3°</span>
+                <span className="historico-cell-input">3°/4°</span>
+                <span className="historico-cell-input">4°/5°</span>
+                <span className="historico-cell-input">5°/6°/CH</span>
+                <span className="historico-cell-input">6°/7°/CH</span>
+                <span className="historico-cell-input">7°/8°/CH</span>
+                <span className="historico-cell-input">8°/9°/CH</span>
+                <span className="historico-cell-input">1ª SÉRIE</span>
+                <span className="historico-cell-input">2ª SÉRIE</span>
+                <span className="historico-cell-input">3ª SÉRIE</span>
+              </div>
+            </div>
+
+            <div className="historico-disciplinas-grid">
+              {cargaHoraria.map((c, idx) => (
+                <div key={idx} className="historico-disciplina-row">
+                  <span className="historico-row-number">{idx + 1}.</span>
+                  {cargaHorariaFields.map((f) => (
+                    <input
+                      key={f.key}
+                      className="historico-cell-input"
+                      placeholder={f.label}
+                      value={c[f.key] || ''}
+                      onChange={(e) => updateCargaHoraria(idx, f.key, e.target.value)}
+                      title={f.label}
+                    />
+                  ))}
+                  <button className="btn btn-sm btn-danger" onClick={() => removeCargaRow(idx)} disabled={cargaHoraria.length <= 1}>×</button>
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-sm btn-primary" onClick={addCargaRow} style={{ marginTop: 8 }}>+ Adicionar Item</button>
           </div>
         )}
 

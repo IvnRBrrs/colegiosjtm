@@ -12,7 +12,7 @@ const INSERT_FIELDS = [
   'cpf', 'telefone', 'nome_pai', 'nome_mae', 'telefone_pais',
   'responsavel_financeiro', 'cpf_responsavel', 'endereco', 'telefone_contato',
   'ano_letivo_atual', 'turma_atual',
-  'naturalidade', 'disciplinas', 'periodo',
+  'naturalidade', 'disciplinas', 'periodo', 'carga_horaria',
 ]
 
 router.get('/', async (req, res) => {
