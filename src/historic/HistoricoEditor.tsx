@@ -66,10 +66,10 @@ function formatDataExtenso(val: string): string {
 
 function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null }) {
   const [aluno, setAluno] = useState('')
-  const [nascimento, setNascimento] = useState('16 DE DEZEMBRO DE 2001')
+  const [nascimento, setNascimento] = useState('')
   const [pai, setPai] = useState('')
   const [mae, setMae] = useState('')
-  const [naturalidade, setNaturalidade] = useState('MACEIÓ/AL')
+  const [naturalidade, setNaturalidade] = useState('')
   const [disciplinas, setDisciplinas] = useState<any[]>(defaultDisciplinas.map((d) => ({ ...d })))
   const [cargaHoraria, setCargaHoraria] = useState<any[]>(defaultCargaHoraria.map((c) => ({ ...c })))
   const [showEditor, setShowEditor] = useState(false)
@@ -117,6 +117,7 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
   }
 
   const addCargaRow = () => {
+    if (cargaHoraria.length >= 4) return
     setCargaHoraria((prev) => [...prev, emptyCarga()])
   }
 
@@ -350,7 +351,7 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
                 <button className="btn btn-sm btn-outline" onClick={() => setShowCargaEditor(!showCargaEditor)}>
                   {showCargaEditor ? 'Fechar Carga Horária' : 'Editar Carga Horária'}
                 </button>
-                <button className="btn btn-sm btn-outline" onClick={fillSample}>Carregar Exemplo</button>
+                {/* <button className="btn btn-sm btn-outline" onClick={fillSample}>Carregar Exemplo</button> */}
               </div>
             </div>
           </div>
@@ -444,7 +445,9 @@ function HistoricoEditor({ initialAlunoId }: { initialAlunoId?: string | null })
                 </div>
               ))}
             </div>
-            <button className="btn btn-sm btn-primary" onClick={addCargaRow} style={{ marginTop: 8 }}>+ Adicionar Item</button>
+            {cargaHoraria.length < 4 && (
+              <button className="btn btn-sm btn-primary" onClick={addCargaRow} style={{ marginTop: 8 }}>+ Adicionar Item</button>
+            )}
           </div>
         )}
 
