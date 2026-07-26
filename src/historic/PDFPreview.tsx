@@ -185,8 +185,9 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                     {Array.from({ length: 25 }).map((_, idx) => {
                         const rowIndex = 11 + idx;
                         const d = disciplinas[idx] || {};
-                        const isCargaRow = idx >= 21;
-                        const ch = isCargaRow ? (cargaHoraria[idx - 21] || {}) : {};
+                        const cargaStartIdx = 25 - cargaHoraria.length;
+                        const isCargaRow = idx >= cargaStartIdx;
+                        const ch = isCargaRow ? (cargaHoraria[idx - cargaStartIdx] || {}) : {};
 
                         return (
                             <React.Fragment key={idx}>
