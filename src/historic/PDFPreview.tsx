@@ -9,23 +9,31 @@ export interface HistoricoData {
     mae: string;
     naturalidade: string;
     disciplinas?: any[];
+    cargaHoraria?: any[];
 }
 
 const historico_logo = '/stj/assets/logo.png';
 const historico_logo_bandeira = '/stj/assets/bandeira.png';
 
 const defaultDisciplinas = [
-    { nome: 'LÍNGUA PORTUGUESA', n1: '-', n2: 'A', n3: '9,5', n4: '-', n5: '9,0', n6: '10,0/200', n7: '9,0/200', n8: '7,5/200', n9: '7,5/200', m1: '9,3/100', m2: '', m3: '', ano: '2015', serie: '1º ANO', escola: 'ESCOLA DE ENS. FUND.\nNIKOLAS PANOS', cidade: 'MACEIÓ/AL', sit: 'APC' },
-    { nome: 'MATEMÁTICA', n1: '-', n2: '-', n3: '6,5', n4: '-', n5: '8,0', n6: '9,0/200', n7: '9,0/200', n8: '7,5/200', n9: '6,0/200', m1: '6,9/100', m2: '', m3: '', ano: '2016', serie: '1º/2º', escola: 'ESCOLA DE ENS. FUND.\nNIKOLAS PANOS', cidade: 'MACEIÓ/AL', sit: 'APC' },
-    { nome: 'HISTÓRIA', n1: '-', n2: '-', n3: '9,5', n4: '-', n5: '9,0', n6: '8,0/80', n7: '8,5/80', n8: '8,0/80', n9: '9,0/80', m1: '8,9/66,4', m2: '', m3: '', ano: '2017', serie: '2º/3º', escola: 'ESCOLA TIA HELENA', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-    { nome: 'GEOGRAFIA', n1: '-', n2: '-', n3: '9,5', n4: '-', n5: '9,0', n6: '9,5/80', n7: '9,5/80', n8: '8,0/80', n9: '9,5/80', m1: '9,0/66,4', m2: '', m3: '', ano: '2018', serie: '3º/4º', escola: 'ESCOLA TIA HELENA', cidade: 'MACEIÓ/AL', sit: 'APC' },
-    { nome: 'CIÊNCIAS', n1: 'A', n2: 'A', n3: '10,0', n4: 'A', n5: '9,0', n6: '10,0/80', n7: '8,0/80', n8: '7,0/80', n9: '7,5/80', m1: '', m2: '', m3: '', ano: '2019', serie: '4º/5º', escola: 'ESCOLA DE ED. BÁSICA\nDIANTE DO TRONO', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-    { nome: 'ARTES', n1: '-', n2: '-', n3: '9,5', n4: 'P', n5: '10,0', n6: '10,0/40', n7: '8,5/40', n8: '9,0/50', n9: '8,5/50', m1: '8,6/33,2', m2: '', m3: '', ano: '2020', serie: '5º/6º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-    { nome: 'L.E.M. INGLÊS', n1: '-', n2: 'A', n3: '10,0', n4: 'C', n5: '9,0', n6: '8,5/80', n7: '9,0/80', n8: '9,0/80', n9: '8,0/80', m1: '8,9/33,2', m2: '', m3: '', ano: '2021', serie: '6º/7º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-    { nome: 'CIDADANIA', n1: '-', n2: 'P', n3: '-', n4: 'P', n5: '-', n6: '10,0/40', n7: '10,0/40', n8: '9,5/50', n9: '-', m1: '', m2: '', m3: '', ano: '2022', serie: '7º/8º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-    { nome: 'EDUCAÇÃO FÍSICA', n1: '-', n2: 'C', n3: '10,0', n4: 'C', n5: '10,0', n6: '9,0/40', n7: '10,0/40', n8: '8,0/50', n9: '8,0/50', m1: '10,0/33,2', m2: '', m3: '', ano: '2023', serie: '8º/9º', escola: 'ESCOLA DE ENS.FUND.\nESPAÇO DO GURY', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
-    { nome: 'FILOSOFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '8,0/40', n9: '9,0/50', m1: '8,0/50', m2: '', m3: '', ano: '2025', serie: '1º SÉRIE', escola: 'COLÉGIO SÃO JUDAS\nTADEU', cidade: 'MACEIÓ/AL', sit: 'APROVADO' },
+    { nome: 'LÍNGUA PORTUGUESA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'MATEMÁTICA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'HISTÓRIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'GEOGRAFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'CIÊNCIAS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'ARTES', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'L.E.M. INGLÊS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'CIDADANIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'EDUCAÇÃO FÍSICA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'FILOSOFIA', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
 ];
+
+const defaultCargaHoraria = [
+    { nome: 'MENÇÃO FINAL', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'MÉDIA GLOBAL', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'DIAS LETIVOS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+    { nome: 'TOTAL DE HORAS', n1: '-', n2: '-', n3: '-', n4: '-', n5: '-', n6: '-', n7: '-', n8: '-', n9: '-', m1: '-', m2: '-', m3: '-', ano: '-', serie: '-', escola: '-', cidade: '-', sit: '-' },
+]
 
 function formatDateBR(val: string): string {
     if (!val) return val
@@ -46,11 +54,12 @@ function formatDateBR(val: string): string {
 
 export const PDFPreview = ({ data }: { data: HistoricoData }) => {
     const aluno = data?.aluno || '';
-    const nascimento = data?.nascimento ? formatDateBR(data.nascimento) : '16 DE DEZEMBRO DE 2001';
+    const nascimento = data?.nascimento ? formatDateBR(data.nascimento) : '';
     const pai = data?.pai || '';
     const mae = data?.mae || '';
     const naturalidade = data?.naturalidade || 'MACEIÓ/AL';
     const disciplinas = (data?.disciplinas && data.disciplinas.length > 0) ? data.disciplinas : defaultDisciplinas;
+    const cargaHoraria = (data?.cargaHoraria && data.cargaHoraria.length > 0) ? data.cargaHoraria : defaultCargaHoraria;
 
     return (
         <div className="pdf-preview-container w-full overflow-x-auto p-4 print:p-0 print:overflow-visible bg-zinc-100 print:bg-white flex justify-center">
@@ -176,35 +185,60 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                     {Array.from({ length: 25 }).map((_, idx) => {
                         const rowIndex = 11 + idx;
                         const d = disciplinas[idx] || {};
+                        const isCargaRow = idx >= 21;
+                        const ch = isCargaRow ? (cargaHoraria[idx - 21] || {}) : {};
 
                         return (
                             <React.Fragment key={idx}>
-                                {/* Coluna 1 - Disciplina bg-[#f6dcc9]*/}
+                                {/* Coluna 1 - Disciplina (primeiras 21) / Carga Horária (últimas 4) */}
                                 <div
-                                    className="col-span-1  border border-zinc-500 flex items-center px-1 text-[8px] font-semibold truncate"
+                                    className={`col-span-1 border border-zinc-500 flex items-center px-1 text-[8px] font-semibold truncate ${isCargaRow ? 'bg-cyan-200' : ''}`}
                                     style={{ gridRowStart: rowIndex }}
                                 >
-                                    {d.nome || ''}
+                                    {isCargaRow ? (ch.nome || '') : (d.nome || '')}
                                 </div>
 
-                                {/* Colunas 2 & 3 - Notas e Médias bg-[#e1efe3] */}
-                                <div
-                                    className="col-span-2  border border-zinc-500 flex text-[8px]"
-                                    style={{ gridRowStart: rowIndex }}
-                                >
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n1 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n2 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n3 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n4 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n5 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n6 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n7 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n8 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n9 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.m1 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.m2 || ''}</div>
-                                    <div className="flex-1 flex items-center justify-center">{d.m3 || ''}</div>
-                                </div>
+                                {/* Colunas 2 & 3 - Notas e Médias (primeiras 21 linhas) */}
+                                {!isCargaRow && (
+                                    <div
+                                        className="col-span-2  border border-zinc-500 flex text-[8px]"
+                                        style={{ gridRowStart: rowIndex }}
+                                    >
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n1 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n2 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n3 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n4 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n5 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n6 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n7 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n8 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.n9 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.m1 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{d.m2 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center">{d.m3 || ''}</div>
+                                    </div>
+                                )}
+
+                                {/* Colunas 2 & 3 - Carga Horária (últimas 4 linhas) */}
+                                {isCargaRow && (
+                                    <div
+                                        className="col-span-2 bg-cyan-200 border border-zinc-500 flex text-[8px]"
+                                        style={{ gridRowStart: rowIndex }}
+                                    >
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n1 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n2 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n3 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n4 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n5 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n6 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n7 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n8 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.n9 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.m1 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center border-r border-zinc-500">{ch.m2 || ''}</div>
+                                        <div className="flex-1 flex items-center justify-center">{ch.m3 || ''}</div>
+                                    </div>
+                                )}
 
                                 {/* Coluna 4 - Histórico Anterior (apenas para as 15 primeiras linhas) bg-[#e2e8f1] */}
                                 {idx < 15 ? (
