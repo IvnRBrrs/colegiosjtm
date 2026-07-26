@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../cms/api'
-import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos } from './index'
+import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos, HistoricoEditor } from './index'
 import { getRoleFromToken, getUsernameFromToken, ROLES } from '../cms/auth'
 import { fetchAdminPreload, fetchLoginLog, deleteLoginLog } from '../cms/api'
 import { seedCache, getCachedMessagesSync, getCachedPreEnrollmentsSync } from '../cms/contentCache'
@@ -11,6 +11,7 @@ export default function AdminApp() {
   const [role, setRole] = useState(() => getRoleFromToken())
   const [view, setView] = useState('dashboard')
   const [sectionTitle, setSectionTitle] = useState('')
+  const [historicoAlunoId, setHistoricoAlunoId] = useState<string | null>(null)
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [unreadPreEnrollments, setUnreadPreEnrollments] = useState(0)
   const [mustChangePassword, setMustChangePassword] = useState(false)
@@ -58,11 +59,12 @@ export default function AdminApp() {
     setView('dashboard')
   }
 
-  const handleNavigate = (v: string, section?: string) => {
+  const handleNavigate = (v: string, section?: string, alunoId?: string) => {
     if (v === 'section' && section) {
       setSectionTitle(section)
       setView('section')
     } else {
+      setHistoricoAlunoId(v === 'historico_editor' && alunoId ? alunoId : null)
       setView(v)
     }
   }
@@ -193,7 +195,9 @@ export default function AdminApp() {
       case 'setup':
         return <SetupForm />
       case 'historico_alunos':
-        return <HistoricoAlunos />
+        return <HistoricoAlunos onNavigate={handleNavigate} />
+      case 'historico_editor':
+        return <HistoricoEditor initialAlunoId={historicoAlunoId} />
       case 'login_log':
         return <LoginLog />
       default:
@@ -240,8 +244,11 @@ export default function AdminApp() {
               Pré-Matrícula
             </button>
           ) : null}
-          {role === ROLES.SUPER_ADMIN ? (
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
             <button className={view === 'historico_alunos' ? 'active' : ''} onClick={() => setView('historico_alunos')}>Cadastro de Alunos</button>
+          ) : null}
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
+            <button className={view === 'historico_editor' ? 'active' : ''} onClick={() => setView('historico_editor')}>Histórico Escolar</button>
           ) : null}
           <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários</button>
           {role === ROLES.SUPER_ADMIN ? (

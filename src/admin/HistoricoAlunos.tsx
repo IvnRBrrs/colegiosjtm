@@ -24,19 +24,25 @@ const CAMPOS_CADASTRO = [
   { key: 'nome', label: 'Nome do Aluno', type: 'text', required: true },
   { key: 'sexo', label: 'Sexo', type: 'select', options: ['', 'Masculino', 'Feminino'] },
   { key: 'escolaridade', label: 'Escolaridade', type: 'text' },
-  { key: 'turma', label: 'Turma', type: 'text' },
+  { key: 'turma', label: 'Turma Ano Anterior', type: 'text' },
   { key: 'data_nascimento', label: 'Data de Nascimento', type: 'date' },
-  { key: 'ano_letivo_atual', label: 'Ano Letivo Atual', type: 'text' },
-  { key: 'turma_atual', label: 'Turma Atual', type: 'text' },
-  { key: 'cpf', label: 'CPF', type: 'text' },
-  { key: 'telefone', label: 'Telefone', type: 'text' },
+  { key: 'naturalidade', label: 'Naturalidade', type: 'text' },
+  { key: 'ano_letivo_atual', label: 'Ano Letivo Atual', type: 'select', options: [
+    '', '1º ano', '2º ano', '3º ano', '4º ano', '5º ano',
+    '6º ano', '7º ano', '8º ano', '9º ano',
+    '1ª série', '2ª série', '3ª série',
+  ] },
+  { key: 'turma_atual', label: 'Turma Atual', type: 'select', options: ['', 'Turma A', 'Turma B', 'Turma C', 'Turma D', 'Turma E'] },
+  { key: 'periodo', label: 'Período', type: 'select', options: ['', 'Matutino', 'Vespertino', 'Noturno', 'Integral'] },
+  { key: 'cpf', label: 'CPF do Aluno', type: 'text' },
   { key: 'nome_pai', label: 'Nome do Pai', type: 'text' },
   { key: 'nome_mae', label: 'Nome da Mãe', type: 'text' },
-  { key: 'telefone_pais', label: 'Telefone (Pais)', type: 'text' },
+  { key: 'telefone_pais', label: 'Telefone dos Pais', type: 'text' },
+  { key: 'telefone', label: 'Whatsapp dos Pais', type: 'text' },
   { key: 'responsavel_financeiro', label: 'Responsável Financeiro', type: 'text' },
-  { key: 'cpf_responsavel', label: 'CPF do Responsável', type: 'text' },
+  { key: 'cpf_responsavel', label: 'CPF do Responsável Financeiro', type: 'text' },
+  { key: 'telefone_contato', label: 'Tel./Whatsapp do Resp. Financeiro', type: 'text' },
   { key: 'endereco', label: 'Endereço', type: 'text' },
-  { key: 'telefone_contato', label: 'Telefone de Contato', type: 'text' },
 ]
 
 interface AnexoEntry {
@@ -52,7 +58,7 @@ interface Aluno {
   [key: string]: any
 }
 
-export default function HistoricoAlunos() {
+export default function HistoricoAlunos({ onNavigate }: { onNavigate?: (view: string, section?: string, alunoId?: string) => void }) {
   const [tab, setTab] = useState<'novo' | 'listar'>('listar')
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -104,10 +110,34 @@ export default function HistoricoAlunos() {
       {tab === 'novo' ? (
         <NovoCadastro onSalvo={handleSalvo} editId={editingId} />
       ) : (
-        <AlunosCadastrados onEdit={handleEdit} />
+        <AlunosCadastrados onEdit={handleEdit} onNavigate={onNavigate} />
       )}
     </div>
   )
+}
+
+function formatCPF(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
+function formatPhone(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 2) return `(${d}`
+  if (d.length <= 7) return `(${d.slice(0, 2)})${d.slice(2)}`
+  return `(${d.slice(0, 2)})${d.slice(2, 7)}-${d.slice(7)}`
+}
+
+function formatDateBR(val: string): string {
+  if (!val) return '-'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-')
+    return `${d}/${m}/${y}`
+  }
+  try { return new Date(val.replace(' ', 'T')).toLocaleDateString('pt-BR') } catch { return val }
 }
 
 function NovoCadastro({ onSalvo, editId }: { onSalvo: () => void; editId?: string | null }) {
@@ -155,7 +185,12 @@ function NovoCadastro({ onSalvo, editId }: { onSalvo: () => void; editId?: strin
     }).catch(() => setLoading(false))
   }, [editId])
 
-  const setField = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }))
+  const setField = (key: string, value: string) => {
+    let formatted = value
+    if (key === 'cpf' || key === 'cpf_responsavel') formatted = formatCPF(value)
+    else if (key === 'telefone' || key === 'telefone_pais' || key === 'telefone_contato') formatted = formatPhone(value)
+    setForm((f) => ({ ...f, [key]: formatted }))
+  }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -184,7 +219,7 @@ function NovoCadastro({ onSalvo, editId }: { onSalvo: () => void; editId?: strin
     const anexosAtuais = group === 'aluno' ? anexosAluno : anexosResp
     const entry = anexosAtuais[categoria]
     if (entry?.id) {
-      try { await api.delete(`/historico-alunos/anexos/${entry.id}`) } catch {}
+      try { await api.delete(`/historico-alunos/anexos/${entry.id}`) } catch { }
     }
     setter((a) => { const b = { ...a }; delete b[categoria]; return b })
   }
@@ -276,9 +311,33 @@ function NovoCadastro({ onSalvo, editId }: { onSalvo: () => void; editId?: strin
           <div className="admin-field" key={campo.key}>
             <label>{campo.label}{campo.required ? ' *' : ''}</label>
             {campo.type === 'select' ? (
-              <select value={form[campo.key] || ''} onChange={(e) => setField(campo.key, e.target.value)}>
-                {campo.options!.map((o) => <option key={o} value={o}>{o || 'Selecione'}</option>)}
-              </select>
+              campo.key === 'ano_letivo_atual' ? (
+                <select value={form[campo.key] || ''} onChange={(e) => setField(campo.key, e.target.value)}>
+                  <option value="">Selecione a série</option>
+                  <optgroup label="Ensino Fundamental 1">
+                    <option value="1º ano">1º ano</option>
+                    <option value="2º ano">2º ano</option>
+                    <option value="3º ano">3º ano</option>
+                    <option value="4º ano">4º ano</option>
+                    <option value="5º ano">5º ano</option>
+                  </optgroup>
+                  <optgroup label="Ensino Fundamental 2">
+                    <option value="6º ano">6º ano</option>
+                    <option value="7º ano">7º ano</option>
+                    <option value="8º ano">8º ano</option>
+                    <option value="9º ano">9º ano</option>
+                  </optgroup>
+                  <optgroup label="Ensino Médio">
+                    <option value="1ª série">1ª série</option>
+                    <option value="2ª série">2ª série</option>
+                    <option value="3ª série">3ª série</option>
+                  </optgroup>
+                </select>
+              ) : (
+                <select value={form[campo.key] || ''} onChange={(e) => setField(campo.key, e.target.value)}>
+                  {campo.options!.map((o) => <option key={o} value={o}>{o || 'Selecione'}</option>)}
+                </select>
+              )
             ) : (
               <input
                 type={campo.type}
@@ -305,7 +364,7 @@ function NovoCadastro({ onSalvo, editId }: { onSalvo: () => void; editId?: strin
   )
 }
 
-function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
+function AlunosCadastrados({ onEdit, onNavigate }: { onEdit: (id: string) => void; onNavigate?: (view: string, section?: string, alunoId?: string) => void }) {
   const [alunos, setAlunos] = useState<Aluno[]>(() => getCachedAlunosSync() || [])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(() => !getCachedAlunosSync())
@@ -360,7 +419,11 @@ function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
 
   const formatDate = (d: string) => {
     if (!d) return '-'
-    try { return new Date(d.replace(' ', 'T')).toLocaleDateString() } catch { return d }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [y, m, day] = d.split('-')
+      return `${day}/${m}/${y}`
+    }
+    try { return new Date(d.replace(' ', 'T')).toLocaleDateString('pt-BR') } catch { return d }
   }
 
   return (
@@ -388,7 +451,7 @@ function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
             <tr>
               <th>Nome</th>
               <th>CPF</th>
-              <th>Turma</th>
+              <th>Ano Letivo Atual</th>
               <th>Data de Nascimento</th>
               <th>Cadastrado em</th>
               <th>Ações</th>
@@ -399,7 +462,7 @@ function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
               <tr key={a.id}>
                 <td>{a.nome || '-'}</td>
                 <td>{a.cpf || '-'}</td>
-                <td>{a.turma || '-'}</td>
+                <td>{a.ano_letivo_atual || '-'}</td>
                 <td>{formatDate(a.data_nascimento)}</td>
                 <td>{formatDate(a.created_at)}</td>
                 <td>
@@ -413,12 +476,12 @@ function AlunosCadastrados({ onEdit }: { onEdit: (id: string) => void }) {
         </table>
       )}
 
-      {showDetail && <AlunoDetail id={selectedId!} anexos={selectedAnexos} onClose={() => setShowDetail(false)} />}
+      {showDetail && <AlunoDetail id={selectedId!} anexos={selectedAnexos} onClose={() => setShowDetail(false)} onNavigate={onNavigate} />}
     </div>
   )
 }
 
-function AlunoDetail({ id, anexos, onClose }: { id: string; anexos: any[]; onClose: () => void }) {
+function AlunoDetail({ id, anexos, onClose, onNavigate }: { id: string; anexos: any[]; onClose: () => void; onNavigate?: (view: string, section?: string, alunoId?: string) => void }) {
   const [aluno, setAluno] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -444,7 +507,12 @@ function AlunoDetail({ id, anexos, onClose }: { id: string; anexos: any[]; onClo
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h3 style={{ margin: 0 }}>Detalhes do Aluno</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="btn btn-sm btn-primary" onClick={() => onNavigate?.('historico_editor', undefined, id)}>
+              Histórico Escolar
+            </button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+          </div>
         </div>
 
         {loading ? <p>Carregando...</p> : aluno && (
@@ -452,7 +520,7 @@ function AlunoDetail({ id, anexos, onClose }: { id: string; anexos: any[]; onClo
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
               {CAMPOS_CADASTRO.filter((c) => aluno[c.key]).map((c) => (
                 <div key={c.key} style={{ fontSize: '0.85rem' }}>
-                  <strong>{c.label}:</strong> {aluno[c.key]}
+                  <strong>{c.label}:</strong> {c.key === 'data_nascimento' ? formatDateBR(aluno[c.key]) : aluno[c.key]}
                 </div>
               ))}
             </div>
