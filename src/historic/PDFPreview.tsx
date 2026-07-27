@@ -61,6 +61,19 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
     const disciplinas = (data?.disciplinas && data.disciplinas.length > 0) ? data.disciplinas : defaultDisciplinas;
     const cargaHoraria = (data?.cargaHoraria && data.cargaHoraria.length > 0) ? data.cargaHoraria : defaultCargaHoraria;
 
+    // 1. Obtém a data atual formatada em português
+    const dataBruta = new Intl.DateTimeFormat('pt-BR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    }).format(new Date());
+
+    // 2. Transforma a primeira letra do mês em maiúscula (ex: "junho" -> "Junho")
+    const dataFormatada = dataBruta.replace(
+        /(\d+\s+de\s+)([a-z])/i,
+        (_, prefixo, letra) => prefixo + letra.toUpperCase()
+    );
+
     return (
         <div className="pdf-preview-container w-full overflow-x-auto p-4 print:p-0 print:overflow-visible bg-zinc-100 print:bg-white flex justify-center">
             <style>{`
@@ -99,9 +112,9 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                         </div>
                         <div className="flex flex-col items-center">
                             <div className="text-[14px] font-bold">COLÉGIO SÃO JUDAS TADEU</div>
-                            <div className="text-[10px]">CNPJ 24.464.554/0001-08</div>
-                            <div className="text-[10px]">Rua Adolfo Gustavo, 435, Serraria.</div>
-                            <div className="text-[10px]">Maceió-AL, CEP 57046-341.</div>
+                            <div className="text-[9px]">CNPJ 24.464.554/0001-08</div>
+                            <div className="text-[9px]">Rua Adolfo Gustavo, 435, Serraria.</div>
+                            <div className="text-[9px]">Maceió-AL, CEP 57046-341.</div>
                         </div>
                         <div className="flex items-center justify-end h-full w-[25%] pr-2">
                             <img src="/stj/assets/bandeira.png" className="h-full w-auto max-h-16 object-contain" />
@@ -133,7 +146,7 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                     </div>
 
                     {/* Linha 8 - Barra azul escura */}
-                    <div className="col-span-4 row-start-8 bg-[#417acf] border border-zinc-500" />
+                    <div className="col-span-4 row-start-8 bg-cyan-200 border border-zinc-500" />
 
                     {/* 3. CABEÇALHO DA TABELA (linhas 9 e 10) */}
                     {/* bg-[#f6dcc9] */}
@@ -154,11 +167,11 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                         HISTÓRICO ANTERIOR
                     </div>
                     {/* bg-[#f6dcc9] */}
-                    <div className="col-span-1 row-start-10  flex items-center justify-center font-bold border border-zinc-500">
+                    <div className="col-span-1 row-start-10  flex items-center justify-center font-bold border bg-cyan-200 border-zinc-500">
                         DISCIPLINAS
                     </div>
                     {/* bg-[#e1efe3]  */}
-                    <div className="col-span-2 row-start-10 flex border border-zinc-500">
+                    <div className="col-span-2 row-start-10 flex border border-zinc-500 bg-cyan-200">
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">1° ANO</div>
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">1°/2°</div>
                         <div className="flex-1 flex items-center justify-center border-r border-zinc-500 text-[8px] font-semibold">2°/3°</div>
@@ -173,7 +186,7 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                         <div className="flex-1 flex items-center justify-center text-[8px] font-semibold">3ª SÉRIE</div>
                     </div>
                     {/* bg-[#e2e8f1] */}
-                    <div className="col-span-1 row-start-10  flex border border-zinc-500 text-[8px]">
+                    <div className="col-span-1 row-start-10  flex border border-zinc-500 bg-cyan-200 text-[8px]">
                         <div className="w-[9%]  flex items-center justify-center border-r border-zinc-500 font-semibold">ANO</div>
                         <div className="w-[9%]  flex items-center justify-center border-r border-zinc-500 font-semibold">SÉRIE</div>
                         <div className="w-[46%]  flex items-center justify-center border-r border-zinc-500 font-semibold">ESCOLA</div>
@@ -283,7 +296,7 @@ export const PDFPreview = ({ data }: { data: HistoricoData }) => {
                         </div>
 
                         <div className="flex items-center justify-center font-bold text-center w-[30%]">
-                            Maceió-AL, 19 de Junho de 2026
+                            Maceió-AL, {dataFormatada}
                         </div>
 
                         <div className="flex flex-col items-center justify-center text-center w-[35%] pt-3">
