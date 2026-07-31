@@ -7,7 +7,14 @@ const router = Router()
 
 router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
-    const result = await req.db.execute('SELECT * FROM pre_enrollments ORDER BY created_at DESC')
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
+    const result = await req.db.execute({
+      sql: isSuper
+        ? 'SELECT * FROM pre_enrollments ORDER BY created_at DESC'
+        : 'SELECT * FROM pre_enrollments WHERE company_id = ? ORDER BY created_at DESC',
+      args: isSuper ? [] : [company_id],
+    })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -34,9 +41,13 @@ router.post('/', async (req, res) => {
 
 router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'UPDATE pre_enrollments SET read = 1 WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'UPDATE pre_enrollments SET read = 1 WHERE id = ?'
+        : 'UPDATE pre_enrollments SET read = 1 WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     res.json({ success: true })
   } catch (err) {
@@ -46,9 +57,13 @@ router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GES
 
 router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'UPDATE pre_enrollments SET archived = 1 WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'UPDATE pre_enrollments SET archived = 1 WHERE id = ?'
+        : 'UPDATE pre_enrollments SET archived = 1 WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     res.json({ success: true })
   } catch (err) {
@@ -58,9 +73,13 @@ router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.
 
 router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'DELETE FROM pre_enrollments WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'DELETE FROM pre_enrollments WHERE id = ?'
+        : 'DELETE FROM pre_enrollments WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     res.json({ success: true })
   } catch (err) {

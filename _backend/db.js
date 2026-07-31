@@ -120,6 +120,12 @@ export async function initDb(db) {
       username TEXT NOT NULL,
       login_time TEXT DEFAULT (datetime('now')),
       ip TEXT DEFAULT '')`,
+    `CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY,
+      nome TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'active',
+      created_at TEXT DEFAULT (datetime('now')))`,
   ]
 
   console.log('[db.js] Creating tables in batch...')
@@ -356,6 +362,32 @@ export async function initDb(db) {
     }
   } catch (e) {
     console.error('[db.js] Migration V5 FAILED:', e.message)
+  }
+
+  // V6 migration: add organizations table and company_id to all tables
+  try {
+    const v6Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v6'`)
+    if (v6Check.rows.length === 0) {
+      await db.execute(`INSERT OR IGNORE INTO organizations (id, nome, slug) VALUES ('default', 'Colégio São Judas Tadeu', 'colegio-sao-judas-tadeu')`)
+      console.log('[db.js] Default organization inserted')
+
+      const tablesForCompany = ['content', 'pages', 'page_content', 'users', 'images', 'content_backups', 'historico_alunos', 'alunos', 'aluno_anexos', 'blog_posts', 'contact_messages', 'pre_enrollments', 'login_log']
+      for (const tableName of tablesForCompany) {
+        const tableInfo = await db.execute(`PRAGMA table_info(${tableName})`)
+        const cols = tableInfo.rows.map((r) => r.name)
+        if (!cols.includes('company_id')) {
+          await db.execute(`ALTER TABLE ${tableName} ADD COLUMN company_id TEXT DEFAULT 'default'`)
+          console.log(`[db.js] company_id column added to ${tableName}`)
+        }
+      }
+      await db.execute(`UPDATE users SET company_id = 'default' WHERE company_id IS NULL OR company_id = ''`)
+      console.log('[db.js] company_id set for existing users')
+
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v6', '1')`)
+      console.log('[db.js] Migration V6 complete')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V6 FAILED:', e.message)
   }
 
   // Seed alunos fictícios (runs once regardless of migration status)

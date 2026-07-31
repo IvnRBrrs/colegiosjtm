@@ -57,14 +57,15 @@ router.post('/login', async (req, res) => {
 
     const role = user.role || ROLES.SUPER_ADMIN
     const mustChangePassword = !!user.must_change_password
-    const token = generateToken(username, role)
+    const company_id = user.company_id || 'default'
+    const token = generateToken(username, role, company_id)
 
     await req.db.execute({
       sql: 'INSERT INTO login_log (username, ip) VALUES (?, ?)',
       args: [username, (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim()],
     })
 
-    res.json({ token, role, mustChangePassword })
+    res.json({ token, role, company_id, mustChangePassword })
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
@@ -83,12 +84,12 @@ router.get('/users', authMiddleware, async (req, res) => {
     }
     if (role !== ROLES.SUPER_ADMIN) {
       const result = await req.db.execute({
-        sql: 'SELECT id, username, email, role, created_at, must_change_password FROM users WHERE username = ? ORDER BY created_at',
+        sql: 'SELECT id, username, email, role, company_id, created_at, must_change_password FROM users WHERE username = ? ORDER BY created_at',
         args: [req.user.username],
       })
       return res.json(rowsToObjects(result.rows, result.columns))
     }
-    const result = await req.db.execute('SELECT id, username, email, role, created_at, must_change_password FROM users ORDER BY created_at')
+    const result = await req.db.execute('SELECT id, username, email, role, company_id, created_at, must_change_password FROM users ORDER BY created_at')
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -117,9 +118,10 @@ router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req
     const hash = await bcrypt.hash(password, 10)
     const userRole = role || ROLES.EDITOR_ADMIN
     const userEmail = email || (username + '@colegiostjm.com.br')
+    const company_id = req.body.company_id || req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'INSERT INTO users (username, password_hash, role, email) VALUES (?, ?, ?, ?)',
-      args: [username, hash, userRole, userEmail],
+      sql: 'INSERT INTO users (username, password_hash, role, email, company_id) VALUES (?, ?, ?, ?, ?)',
+      args: [username, hash, userRole, userEmail, company_id],
     })
 
     res.json({ success: true })
@@ -150,6 +152,10 @@ router.put('/users/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (
     if (email !== undefined) {
       sets.push('email = ?')
       args.push(email)
+    }
+    if (req.body.company_id !== undefined) {
+      sets.push('company_id = ?')
+      args.push(req.body.company_id)
     }
     if (sets.length === 0) {
       return res.status(400).json({ error: 'Nothing to update' })

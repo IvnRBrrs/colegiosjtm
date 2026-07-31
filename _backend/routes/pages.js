@@ -90,9 +90,10 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADM
     const { title, show_in_menu, parent_slug, menu_order, content } = req.body
     if (!slug || !title) return res.status(400).json({ error: 'slug and title are required' })
 
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: `INSERT INTO pages (slug, title, show_in_menu, parent_slug, menu_order)
-            VALUES (?, ?, ?, ?, ?)
+      sql: `INSERT INTO pages (slug, title, show_in_menu, parent_slug, menu_order, company_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(slug) DO UPDATE SET
               title = excluded.title, show_in_menu = excluded.show_in_menu,
               parent_slug = excluded.parent_slug, menu_order = excluded.menu_order`,
@@ -102,6 +103,7 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADM
         show_in_menu !== undefined ? (show_in_menu ? 1 : 0) : 1,
         parent_slug || null,
         menu_order || 0,
+        company_id,
       ],
     })
 
@@ -150,7 +152,12 @@ router.put('/:slug', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR
     }
     if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' })
     args.push(slug)
-    await req.db.execute({ sql: `UPDATE pages SET ${sets.join(', ')} WHERE slug = ?`, args })
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
+    await req.db.execute({
+      sql: `UPDATE pages SET ${sets.join(', ')} WHERE slug = ?` + (isSuper ? '' : ' AND company_id = ?'),
+      args: isSuper ? args : [...args, company_id],
+    })
     await req.db.execute({
       sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
       args: [],
@@ -189,10 +196,11 @@ router.put('/:slug/content', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLE
   const slug = normSlug(req.params.slug)
   try {
     const entries = req.body
+    const company_id = req.user.company_id || 'default'
     const statements = Object.entries(entries).map(([key, value]) => ({
-      sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
+      sql: `INSERT INTO page_content (page_slug, key, value, company_id) VALUES (?, ?, ?, ?)
             ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
-      args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
+      args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value), company_id],
     }))
     if (statements.length > 0) {
       for (const stmt of statements) await req.db.execute(stmt)
@@ -213,10 +221,11 @@ router.put('/:slug/content/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN,
   try {
     const { entries } = req.body
     if (!entries) return res.status(400).json({ error: 'Entries required' })
+    const company_id = req.user.company_id || 'default'
     const statements = Object.entries(entries).map(([key, value]) => ({
-      sql: `INSERT INTO page_content (page_slug, key, value) VALUES (?, ?, ?)
+      sql: `INSERT INTO page_content (page_slug, key, value, company_id) VALUES (?, ?, ?, ?)
             ON CONFLICT(page_slug, key) DO UPDATE SET value = excluded.value`,
-      args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value)],
+      args: [slug, key, typeof value === 'string' ? value : JSON.stringify(value), company_id],
     }))
     if (statements.length > 0) {
       for (const stmt of statements) await req.db.execute(stmt)
@@ -235,13 +244,19 @@ router.put('/:slug/content/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN,
 router.delete('/:slug', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   const slug = normSlug(req.params.slug)
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'DELETE FROM page_content WHERE page_slug = ?',
-      args: [slug],
+      sql: isSuper
+        ? 'DELETE FROM page_content WHERE page_slug = ?'
+        : 'DELETE FROM page_content WHERE page_slug = ? AND company_id = ?',
+      args: isSuper ? [slug] : [slug, company_id],
     })
     await req.db.execute({
-      sql: 'DELETE FROM pages WHERE slug = ?',
-      args: [slug],
+      sql: isSuper
+        ? 'DELETE FROM pages WHERE slug = ?'
+        : 'DELETE FROM pages WHERE slug = ? AND company_id = ?',
+      args: isSuper ? [slug] : [slug, company_id],
     })
     await req.db.execute({
       sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
