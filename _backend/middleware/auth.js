@@ -25,6 +25,7 @@ export async function authMiddleware(req, res, next) {
           username: user.email || user.id,
           role: user.user_metadata?.role || user.role || ROLES.SUPER_ADMIN,
           company_id: user.user_metadata?.company_id || 'default',
+          supabaseUid: user.id,
         }
         console.log('[Auth Middleware] Autenticado via Supabase:', req.user.username, 'role:', req.user.role, 'company_id:', req.user.company_id)
         return next()

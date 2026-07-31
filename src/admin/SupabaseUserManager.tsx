@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../cms/api'
-import { ROLE_NAMES, ROLES } from '../cms/auth'
+import { getRoleFromToken, ROLE_NAMES, ROLES } from '../cms/auth'
 
 interface SupabaseUser {
   id: string
@@ -26,6 +26,8 @@ export default function SupabaseUserManager() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const isSuperAdmin = getRoleFromToken() === ROLES.SUPER_ADMIN
+
   useEffect(() => { loadUsers() }, [])
 
   const loadUsers = async () => {
@@ -50,7 +52,7 @@ export default function SupabaseUserManager() {
         email: newEmail,
         password: newPassword,
         role: newRole,
-        company_id: newCompanyId,
+        ...(isSuperAdmin ? { company_id: newCompanyId } : {}),
       })
       setNewEmail('')
       setNewPassword('')
@@ -116,7 +118,7 @@ export default function SupabaseUserManager() {
 
   return (
     <div className="admin-users">
-      <h2>Gerenciar Usuários (Supabase)</h2>
+      <h2>Gerenciar Usuários (Server S.)</h2>
 
       <div className="admin-row" style={{ alignItems: 'flex-end', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div className="admin-field">
@@ -133,10 +135,12 @@ export default function SupabaseUserManager() {
             {roleOptions}
           </select>
         </div>
-        <div className="admin-field">
-          <label>Empresa (company_id)</label>
-          <input type="text" value={newCompanyId} onChange={(e) => setNewCompanyId(e.target.value)} placeholder="default" />
-        </div>
+        {isSuperAdmin && (
+          <div className="admin-field">
+            <label>Empresa (company_id)</label>
+            <input type="text" value={newCompanyId} onChange={(e) => setNewCompanyId(e.target.value)} placeholder="default" />
+          </div>
+        )}
         <button className="btn btn-primary" onClick={createUser}>Criar Usuário</button>
       </div>
 
@@ -185,7 +189,7 @@ export default function SupabaseUserManager() {
                     )}
                   </td>
                   <td>
-                    {isEditingThis ? (
+                    {isEditingThis && isSuperAdmin ? (
                       <input
                         type="text"
                         value={editingUser!.company_id}
@@ -193,7 +197,7 @@ export default function SupabaseUserManager() {
                         style={{ width: 100 }}
                       />
                     ) : (
-                      u.company_id || '-' 
+                      u.company_id || '-'
                     )}
                   </td>
                   <td>{formatDate(u.created_at)}</td>

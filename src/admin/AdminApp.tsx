@@ -286,8 +286,8 @@ export default function AdminApp() {
             <button className={view === 'historico_editor' ? 'active' : ''} onClick={() => setView('historico_editor')}>Histórico Escolar</button>
           ) : null}
           <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários (T.)</button>
-          {role === ROLES.SUPER_ADMIN ? (
-            <button className={view === 'supabase_users' ? 'active' : ''} onClick={() => setView('supabase_users')}>Usuários (S.)</button>
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
+            <button className={view === 'supabase_users' ? 'active' : ''} onClick={() => setView('supabase_users')}>Usuários (Server S.)</button>
           ) : null}
           {role === ROLES.SUPER_ADMIN ? (
             <>

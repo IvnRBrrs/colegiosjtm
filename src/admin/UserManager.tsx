@@ -4,10 +4,11 @@ import { getRoleFromToken, ROLE_NAMES, ROLES } from '../cms/auth'
 import { fetchUsersCached, invalidateCache, getCachedUsersSync } from '../cms/contentCache'
 
 interface User {
-  id: number
+  id: number | string
   username: string
   email: string
   role: string
+  company_id?: string
   created_at: string
   must_change_password?: number
 }
@@ -22,8 +23,8 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
   const [newPassword, setNewPassword] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState(ROLES.EDITOR_ADMIN)
-  const [editingUser, setEditingUser] = useState<{ id: number; username: string; role: string; email: string } | null>(null)
-  const [resetData, setResetData] = useState<{ id: number; username: string } | null>(null)
+  const [editingUser, setEditingUser] = useState<{ id: number | string; username: string; role: string; email: string } | null>(null)
+  const [resetData, setResetData] = useState<{ id: number | string; username: string } | null>(null)
   const [tempPassword, setTempPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [status, setStatus] = useState('')
@@ -68,9 +69,14 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
     }
   }
 
-  const saveUser = async (id: number, username: string, role: string, email: string) => {
+  const saveUser = async (id: number | string, username: string, role: string, email: string) => {
     try {
-      await api.put(`/auth/users/${id}`, { username, role, email })
+      const payload: Record<string, string> = { email }
+      if (isSuperAdmin) {
+        payload.username = username
+        payload.role = role
+      }
+      await api.put(`/auth/users/${id}`, payload)
       setEditingUser(null)
       invalidateCache('users')
       loadUsers()
@@ -79,7 +85,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
     }
   }
 
-  const deleteUser = async (id: number) => {
+  const deleteUser = async (id: number | string) => {
     if (!confirm('Excluir este usuário?')) return
     try {
       await api.delete(`/auth/users/${id}`)
@@ -120,6 +126,8 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
 
   const roleFromToken = getRoleFromToken()
   const isSuperAdmin = roleFromToken === ROLES.SUPER_ADMIN
+  const isGestorAdmin = roleFromToken === ROLES.GESTOR_ADMIN
+  const canManageAll = isSuperAdmin || isGestorAdmin
 
   const roleOptions = Object.entries(ROLE_NAMES).map(([value, label]) => (
     <option key={value} value={value}>{label}</option>
@@ -127,9 +135,9 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
 
   return (
     <div className="admin-users">
-      <h2>{isSuperAdmin ? 'Gerenciar Usuários' : 'Meu Usuário'}</h2>
+      <h2>{canManageAll ? 'Gerenciar Usuários (Turso)' : 'Meu Usuário'}</h2>
 
-      {isSuperAdmin && (
+      {canManageAll && (
         <div className="admin-row" style={{ alignItems: 'flex-end', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
           <div className="admin-field">
             <label>Nome de usuário</label>
@@ -164,6 +172,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
               <th>Usuário</th>
               <th>Email</th>
               <th>Função</th>
+              <th>Empresa</th>
               <th>Criado em</th>
               <th>Ações</th>
             </tr>
@@ -171,11 +180,12 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
           <tbody>
             {users.map((u) => {
               const isEditingThis = editingUser !== null && editingUser.id === u.id
+              const canEditRole = isSuperAdmin
               return (
                 <tr key={u.id}>
-                  <td>{u.id}</td>
+                  <td>{typeof u.id === 'string' ? u.id.substring(0, 8) + '...' : u.id}</td>
                   <td>
-                    {isEditingThis ? (
+                    {isEditingThis && canEditRole ? (
                       <input
                         value={editingUser!.username}
                         onChange={(e) => setEditingUser({ ...editingUser!, username: e.target.value })}
@@ -208,7 +218,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
                     )}
                   </td>
                   <td>
-                    {isEditingThis ? (
+                    {isEditingThis && canEditRole ? (
                       <select value={editingUser!.role} onChange={(e) => setEditingUser({ ...editingUser!, role: e.target.value })}>
                         {roleOptions}
                       </select>
@@ -216,6 +226,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
                       ROLE_NAMES[u.role] || u.role
                     )}
                   </td>
+                  <td>{u.company_id || '-'}</td>
                   <td>{formatDate(u.created_at)}</td>
                   <td>
                     {isEditingThis ? (
@@ -225,15 +236,15 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
                       </>
                     ) : (
                       <>
-                        {isSuperAdmin && (
+                        {(canManageAll || u.username === currentUsername) && (
                           <button className="btn btn-sm" onClick={() => setEditingUser({ id: u.id, username: u.username, role: u.role, email: u.email || '' })}>Editar</button>
                         )}
-                        {(isSuperAdmin || u.username === currentUsername) && (
+                        {(canManageAll || u.username === currentUsername) && (
                           <button className="btn btn-sm" onClick={() => setResetData({ id: u.id, username: u.username })}>Resetar Senha</button>
                         )}
                       </>
                     )}
-                    {isSuperAdmin && (
+                    {canManageAll && (
                       <button className="btn btn-sm btn-danger" onClick={() => deleteUser(u.id)}>Excluir</button>
                     )}
                   </td>

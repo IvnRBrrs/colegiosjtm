@@ -11,3 +11,22 @@ export const ROLE_NAMES = {
   editor_blog: 'Editor do Blog',
   gestor_admin: 'Gestor de Alunos',
 }
+
+export const ROLE_WEIGHT = {
+  super_admin: 4,
+  gestor_admin: 3,
+  editor_admin: 2,
+  editor_blog: 1,
+}
+
+export function canManageRole(managerRole, targetRole) {
+  const mw = ROLE_WEIGHT[managerRole] || 0
+  const tw = ROLE_WEIGHT[targetRole] || 0
+  return mw >= tw
+}
+
+export function canCreateRole(managerRole, targetRole) {
+  const mw = ROLE_WEIGHT[managerRole] || 0
+  const tw = ROLE_WEIGHT[targetRole] || 0
+  return mw > tw
+}

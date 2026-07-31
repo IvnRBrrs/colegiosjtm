@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { generateToken, authMiddleware, requireRole } from '../middleware/auth.js'
-import { ROLES, ROLE_NAMES } from '../roles.js'
+import { ROLES, ROLE_NAMES, ROLE_WEIGHT, canManageRole, canCreateRole } from '../roles.js'
 import { rowsToObjects } from '../rows.js'
+import supabaseAdmin from '../supabaseAdmin.js'
 
 const router = Router()
 
@@ -71,7 +72,7 @@ router.post('/login', async (req, res) => {
   }
 })
 
-// User list — super_admin sees all; others see only themselves
+// User list — super_admin sees all; gestor_admin sees same or lower roles; others see only themselves
 router.get('/users', authMiddleware, async (req, res) => {
   try {
     let role = req.user.role
@@ -82,21 +83,62 @@ router.get('/users', authMiddleware, async (req, res) => {
       })
       if (lookup.rows.length > 0) role = lookup.rows[0].role
     }
-    if (role !== ROLES.SUPER_ADMIN) {
-      const result = await req.db.execute({
-        sql: 'SELECT id, username, email, role, company_id, created_at, must_change_password FROM users WHERE username = ? ORDER BY created_at',
-        args: [req.user.username],
-      })
-      return res.json(rowsToObjects(result.rows, result.columns))
+
+    // 1. Try Turso users first
+    const allTurso = await req.db.execute('SELECT id, username, email, role, company_id, created_at, must_change_password FROM users ORDER BY created_at')
+    let tursoUsers = rowsToObjects(allTurso.rows, allTurso.columns)
+
+    if (role === ROLES.SUPER_ADMIN) {
+      // Super admin sees all
+    } else if (role === ROLES.GESTOR_ADMIN) {
+      // gestor_admin sees users with weight <= GESTOR_WEIGHT (gestor, editor_admin, editor_blog)
+      const maxWeight = ROLE_WEIGHT[ROLES.GESTOR_ADMIN]
+      tursoUsers = tursoUsers.filter(u => (ROLE_WEIGHT[u.role] || 0) <= maxWeight)
+    } else if (tursoUsers.some(u => u.username === req.user.username)) {
+      // Non-gestor but exists in Turso: only themselves
+      tursoUsers = tursoUsers.filter(u => u.username === req.user.username)
+    } else {
+      tursoUsers = []
     }
-    const result = await req.db.execute('SELECT id, username, email, role, company_id, created_at, must_change_password FROM users ORDER BY created_at')
-    res.json(rowsToObjects(result.rows, result.columns))
+
+    // 2. Try Supabase users (for gestor_admin or Supabase-only users)
+    let supabaseUsers = []
+    if (supabaseAdmin && (role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || req.user.supabaseUid)) {
+      try {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers()
+        if (!error && data?.users) {
+          supabaseUsers = data.users.map(su => ({
+            id: su.id,
+            username: su.email,
+            email: su.email,
+            role: su.user_metadata?.role || 'editor_admin',
+            company_id: su.user_metadata?.company_id || 'default',
+            created_at: su.created_at,
+            must_change_password: 0,
+          }))
+
+          if (role === ROLES.GESTOR_ADMIN) {
+            const maxWeight = ROLE_WEIGHT[ROLES.GESTOR_ADMIN]
+            supabaseUsers = supabaseUsers.filter(u => (ROLE_WEIGHT[u.role] || 0) <= maxWeight)
+          } else if (role !== ROLES.SUPER_ADMIN) {
+            // Non-gestor Supabase-only user: only themselves
+            supabaseUsers = supabaseUsers.filter(u => u.id === req.user.supabaseUid || u.email === req.user.username)
+          }
+        }
+      } catch {}
+    }
+
+    // Merge: prefer Turso data, fallback to Supabase for users not in Turso
+    const tursoUsernames = new Set(tursoUsers.map(u => u.username))
+    const merged = [...tursoUsers, ...supabaseUsers.filter(su => !tursoUsernames.has(su.username))]
+
+    res.json(merged)
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
 })
 
-router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
+router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
     const { username, password, role, email } = req.body
     if (!username || !password) {
@@ -104,6 +146,11 @@ router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req
     }
     if (role && !ROLE_NAMES[role]) {
       return res.status(400).json({ error: 'Invalid role' })
+    }
+
+    const newRole = role || ROLES.EDITOR_ADMIN
+    if (req.user.role === ROLES.GESTOR_ADMIN && !canCreateRole(req.user.role, newRole)) {
+      return res.status(403).json({ error: 'Cannot create users with this role' })
     }
 
     const existing = await req.db.execute({
@@ -130,71 +177,187 @@ router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req
   }
 })
 
-router.put('/users/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
+router.put('/users/:id', authMiddleware, async (req, res) => {
   try {
-    const { username, role, email } = req.body
-    const sets = []
-    const args = []
-    if (username !== undefined) {
-      const dup = await req.db.execute({
-        sql: 'SELECT id FROM users WHERE username = ? AND id != ?',
-        args: [username, req.params.id],
-      })
-      if (dup.rows.length > 0) return res.status(400).json({ error: 'Username already taken' })
-      sets.push('username = ?')
-      args.push(username)
-    }
-    if (role) {
-      if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
-      sets.push('role = ?')
-      args.push(role)
-    }
-    if (email !== undefined) {
-      sets.push('email = ?')
-      args.push(email)
-    }
-    if (req.body.company_id !== undefined) {
-      sets.push('company_id = ?')
-      args.push(req.body.company_id)
-    }
-    if (sets.length === 0) {
-      return res.status(400).json({ error: 'Nothing to update' })
-    }
-    args.push(req.params.id)
-    await req.db.execute({
-      sql: `UPDATE users SET ${sets.join(', ')} WHERE id = ?`,
-      args,
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const isGestor = req.user.role === ROLES.GESTOR_ADMIN
+    const targetId = req.params.id
+
+    // Check if this is a Turso user
+    const tursoTarget = await req.db.execute({
+      sql: 'SELECT id, username, role FROM users WHERE id = ?',
+      args: [isNaN(targetId) ? -1 : parseInt(targetId)],
     })
+
+    if (tursoTarget.rows.length > 0) {
+      const targetUser = tursoTarget.rows[0]
+
+      // Permission check: non-super/gestor can only edit self
+      if (!isSuper && !isGestor) {
+        const me = await req.db.execute({
+          sql: 'SELECT id FROM users WHERE username = ?',
+          args: [req.user.username],
+        })
+        if (me.rows.length === 0 || me.rows[0].id !== targetUser.id) {
+          return res.status(403).json({ error: 'Forbidden' })
+        }
+      }
+
+      // gestor_admin can only edit users with role <= GESTOR_WEIGHT
+      if (isGestor && !canManageRole(ROLES.GESTOR_ADMIN, targetUser.role)) {
+        return res.status(403).json({ error: 'Cannot edit users with higher role' })
+      }
+
+      const { username, role, email } = req.body
+      const sets = []
+      const args = []
+      if (username !== undefined) {
+        if (!isSuper) return res.status(403).json({ error: 'Only super_admin can change username' })
+        const dup = await req.db.execute({
+          sql: 'SELECT id FROM users WHERE username = ? AND id != ?',
+          args: [username, targetUser.id],
+        })
+        if (dup.rows.length > 0) return res.status(400).json({ error: 'Username already taken' })
+        sets.push('username = ?')
+        args.push(username)
+      }
+      if (role) {
+        if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
+        if (!isSuper) {
+          if (!isGestor || !canManageRole(ROLES.GESTOR_ADMIN, role)) {
+            return res.status(403).json({ error: 'Cannot assign this role' })
+          }
+        }
+        sets.push('role = ?')
+        args.push(role)
+      }
+      if (email !== undefined) {
+        sets.push('email = ?')
+        args.push(email)
+      }
+      if (req.body.company_id !== undefined) {
+        if (!isSuper) return res.status(403).json({ error: 'Only super_admin can change company_id' })
+        sets.push('company_id = ?')
+        args.push(req.body.company_id)
+      }
+      if (sets.length === 0) {
+        return res.status(400).json({ error: 'Nothing to update' })
+      }
+      args.push(targetUser.id)
+      await req.db.execute({
+        sql: `UPDATE users SET ${sets.join(', ')} WHERE id = ?`,
+        args,
+      })
+      return res.json({ success: true })
+    }
+
+    // Not a Turso user — try Supabase
+    if (!supabaseAdmin) return res.status(404).json({ error: 'User not found' })
+
+    const suid = req.user.supabaseUid
+    if (!suid) return res.status(404).json({ error: 'User not found' })
+
+    // gestor_admin can edit Supabase users they can manage
+    if (isGestor) {
+      // Fetch target user's role to check permission
+      const { data: td, error: tdErr } = await supabaseAdmin.auth.admin.getUserById(targetId)
+      if (tdErr || !td?.user) return res.status(404).json({ error: 'User not found' })
+      const targetRole = td.user.user_metadata?.role || 'editor_admin'
+      if (!canManageRole(ROLES.GESTOR_ADMIN, targetRole)) {
+        return res.status(403).json({ error: 'Cannot edit users with higher role' })
+      }
+    } else if (!isSuper && suid !== targetId) {
+      return res.status(403).json({ error: 'Forbidden' })
+    }
+
+    const { email, role } = req.body
+    const supdate = {}
+    if (email !== undefined) supdate.email = email
+    if (isSuper && role) {
+      if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
+      supdate.user_metadata = { role, company_id: req.body.company_id || 'default' }
+    } else if (isGestor && role) {
+      if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
+      if (!canManageRole(ROLES.GESTOR_ADMIN, role)) return res.status(403).json({ error: 'Cannot assign this role' })
+      supdate.user_metadata = { role, company_id: req.body.company_id || 'default' }
+    }
+    if (Object.keys(supdate).length === 0) return res.status(400).json({ error: 'Nothing to update' })
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(targetId, supdate)
+    if (error) throw error
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
 })
 
-// Reset password — super_admin can reset any user; others can reset only themselves
+// Reset password — super_admin/gestor_admin can reset for managed users; others can reset only themselves
 router.post('/users/:id/reset-password', authMiddleware, async (req, res) => {
   try {
     const { password } = req.body
     if (!password) return res.status(400).json({ error: 'Password required' })
 
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const isGestor = req.user.role === ROLES.GESTOR_ADMIN
+    const targetId = req.params.id
+
+    // Try Turso first
     const me = await req.db.execute({
       sql: 'SELECT id, role FROM users WHERE username = ?',
       args: [req.user.username],
     })
-    if (me.rows.length === 0) return res.status(404).json({ error: 'User not found' })
-    const currentUser = me.rows[0]
-    const isSuper = currentUser.role === ROLES.SUPER_ADMIN
-    const targetId = parseInt(req.params.id)
+    if (me.rows.length > 0) {
+      const currentUser = me.rows[0]
+      const tid = parseInt(targetId)
+      // Allow if: same user, OR super_admin, OR gestor_admin managing lower-or-equal role
+      if (currentUser.id !== tid && !isSuper && !isGestor) {
+        return res.status(403).json({ error: 'Forbidden' })
+      }
+      if (currentUser.id !== tid && isGestor) {
+        const targetExists = await req.db.execute({
+          sql: 'SELECT role FROM users WHERE id = ?',
+          args: [tid],
+        })
+        if (targetExists.rows.length === 0) return res.status(404).json({ error: 'User not found' })
+        if (!canManageRole(ROLES.GESTOR_ADMIN, targetExists.rows[0].role)) {
+          return res.status(403).json({ error: 'Cannot reset password for users with higher role' })
+        }
+      }
+      if (currentUser.id !== tid && isSuper) {
+        const targetExists = await req.db.execute({
+          sql: 'SELECT id FROM users WHERE id = ?',
+          args: [tid],
+        })
+        if (targetExists.rows.length === 0) return res.status(404).json({ error: 'User not found' })
+      }
+      const hash = await bcrypt.hash(password, 10)
+      await req.db.execute({
+        sql: 'UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?',
+        args: [hash, tid],
+      })
+      return res.json({ success: true })
+    }
 
-    if (currentUser.id !== targetId && !isSuper) {
+    // Not in Turso — try Supabase
+    if (!supabaseAdmin) return res.status(404).json({ error: 'User not found' })
+
+    const suid = req.user.supabaseUid
+    if (!suid) return res.status(404).json({ error: 'User not found' })
+
+    // gestor_admin: fetch target user to check role
+    if (isGestor) {
+      const { data: td, error: tdErr } = await supabaseAdmin.auth.admin.getUserById(targetId)
+      if (tdErr || !td?.user) return res.status(404).json({ error: 'User not found' })
+      const targetRole = td.user.user_metadata?.role || 'editor_admin'
+      if (!canManageRole(ROLES.GESTOR_ADMIN, targetRole)) {
+        return res.status(403).json({ error: 'Cannot reset password for users with higher role' })
+      }
+    } else if (!isSuper && suid !== targetId) {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
-    const hash = await bcrypt.hash(password, 10)
-    await req.db.execute({
-      sql: 'UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?',
-      args: [hash, targetId],
-    })
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(targetId, { password })
+    if (error) throw error
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -240,11 +403,37 @@ router.post('/change-password', authMiddleware, async (req, res) => {
   }
 })
 
-router.delete('/users/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
+router.delete('/users/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
+    const targetId = req.params.id
+    const isGestor = req.user.role === ROLES.GESTOR_ADMIN
+
+    if (isGestor) {
+      const tursoTarget = await req.db.execute({
+        sql: 'SELECT id, username, role FROM users WHERE id = ?',
+        args: [isNaN(targetId) ? -1 : parseInt(targetId)],
+      })
+      if (tursoTarget.rows.length === 0) return res.status(404).json({ error: 'User not found' })
+      const t = tursoTarget.rows[0]
+
+      // gestor cannot delete themselves
+      const me = await req.db.execute({
+        sql: 'SELECT id FROM users WHERE username = ?',
+        args: [req.user.username],
+      })
+      if (me.rows.length > 0 && me.rows[0].id === t.id) {
+        return res.status(403).json({ error: 'You cannot delete yourself' })
+      }
+
+      // gestor can only delete users with role <= GESTOR_WEIGHT
+      if (!canManageRole(ROLES.GESTOR_ADMIN, t.role)) {
+        return res.status(403).json({ error: 'Cannot delete users with higher role' })
+      }
+    }
+
     await req.db.execute({
       sql: 'DELETE FROM users WHERE id = ?',
-      args: [req.params.id],
+      args: [isNaN(targetId) ? targetId : parseInt(targetId)],
     })
     res.json({ success: true })
   } catch (err) {
