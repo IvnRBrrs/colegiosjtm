@@ -7,9 +7,10 @@ const router = Router()
 
 router.get('/:sectionKey', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
   try {
+    const company_id = req.user.company_id || 'default'
     const result = await req.db.execute({
-      sql: 'SELECT * FROM content_backups WHERE section_key = ? ORDER BY version DESC LIMIT 6',
-      args: [req.params.sectionKey],
+      sql: 'SELECT * FROM content_backups WHERE section_key = ? AND company_id = ? ORDER BY version DESC LIMIT 6',
+      args: [req.params.sectionKey, company_id],
     })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
@@ -24,15 +25,16 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res
       return res.status(400).json({ error: 'section_key and value are required' })
     }
 
+    const company_id = req.user.company_id || 'default'
     const versionResult = await req.db.execute({
-      sql: 'SELECT COALESCE(MAX(version), 0) + 1 as next_version FROM content_backups WHERE section_key = ?',
-      args: [section_key],
+      sql: 'SELECT COALESCE(MAX(version), 0) + 1 as next_version FROM content_backups WHERE section_key = ? AND company_id = ?',
+      args: [section_key, company_id],
     })
     const version = versionResult.rows[0].next_version
 
     await req.db.execute({
-      sql: 'INSERT INTO content_backups (section_key, value, version) VALUES (?, ?, ?)',
-      args: [section_key, value, version],
+      sql: 'INSERT INTO content_backups (section_key, value, version, company_id) VALUES (?, ?, ?, ?)',
+      args: [section_key, value, version, company_id],
     })
 
     res.json({ success: true, version })
@@ -44,9 +46,10 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res
 router.post('/restore', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
   try {
     const { section_key, version } = req.body
+    const company_id = req.user.company_id || 'default'
     const result = await req.db.execute({
-      sql: 'SELECT * FROM content_backups WHERE section_key = ? AND version = ?',
-      args: [section_key, version],
+      sql: 'SELECT * FROM content_backups WHERE section_key = ? AND version = ? AND company_id = ?',
+      args: [section_key, version, company_id],
     })
 
     if (result.rows.length === 0) {

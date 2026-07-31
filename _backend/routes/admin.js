@@ -6,14 +6,35 @@ const router = Router()
 
 router.get('/preload', authMiddleware, async (req, res) => {
   try {
+    const isSuper = req.user.role === 'super_admin'
+    const company_id = req.user.company_id || 'default'
+
+    const whereCompany = isSuper ? '' : ' WHERE company_id = ?'
+    const args = isSuper ? [] : [company_id]
+
     const [contentResult, imagesResult, pagesResult, blogResult, tagsResult, messagesResult, preEnrollmentsResult] = await Promise.all([
-      req.db.execute('SELECT key, value FROM content'),
-      req.db.execute("SELECT id, filename, type, component_type, thumbnail, created_at FROM images ORDER BY created_at DESC"),
-      req.db.execute('SELECT * FROM pages'),
-      req.db.execute("SELECT id, title, subtitle, author, date, tags, images, slug, published, created_at FROM blog_posts ORDER BY date DESC LIMIT 50"),
-      req.db.execute("SELECT tags FROM blog_posts WHERE tags != '[]'"),
-      req.db.execute('SELECT id, name, email, phone, message, created_at, read, archived FROM contact_messages ORDER BY created_at DESC'),
-      req.db.execute('SELECT * FROM pre_enrollments ORDER BY created_at DESC'),
+      req.db.execute({ sql: 'SELECT key, value FROM content' + whereCompany, args }),
+      req.db.execute({
+        sql: `SELECT id, filename, type, component_type, thumbnail, created_at FROM images${whereCompany} ORDER BY created_at DESC`,
+        args,
+      }),
+      req.db.execute({ sql: 'SELECT * FROM pages' + whereCompany, args }),
+      req.db.execute({
+        sql: `SELECT id, title, subtitle, author, date, tags, images, slug, published, created_at FROM blog_posts${whereCompany} ORDER BY date DESC LIMIT 50`,
+        args,
+      }),
+      req.db.execute({
+        sql: `SELECT tags FROM blog_posts WHERE tags != '[]'` + (isSuper ? '' : ' AND company_id = ?'),
+        args: isSuper ? [] : [company_id],
+      }),
+      req.db.execute({
+        sql: 'SELECT id, name, email, phone, message, created_at, read, archived FROM contact_messages' + whereCompany + ' ORDER BY created_at DESC',
+        args,
+      }),
+      req.db.execute({
+        sql: 'SELECT * FROM pre_enrollments' + whereCompany + ' ORDER BY created_at DESC',
+        args,
+      }),
     ])
 
     const content = {}

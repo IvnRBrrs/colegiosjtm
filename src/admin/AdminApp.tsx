@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../cms/api'
-import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos, HistoricoEditor } from './index'
+import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos, HistoricoEditor, SupabaseUserManager } from './index'
+import AdminLoginSupabase from './AdminLoginSupabase'
 import { getRoleFromToken, getUsernameFromToken, ROLES } from '../cms/auth'
 import { fetchAdminPreload, fetchLoginLog, deleteLoginLog } from '../cms/api'
 import { seedCache, getCachedMessagesSync, getCachedPreEnrollmentsSync } from '../cms/contentCache'
 import ChangePasswordModal from './ChangePasswordModal'
 
 export default function AdminApp() {
-  const [token, setToken] = useState(localStorage.getItem('cms_token'))
+  const [token, setToken] = useState(localStorage.getItem('cms_token') || localStorage.getItem('supabase_token'))
   const [role, setRole] = useState(() => getRoleFromToken())
   const [view, setView] = useState('dashboard')
+  const [loginView, setLoginView] = useState<'turso' | 'supabase'>('turso')
   const [sectionTitle, setSectionTitle] = useState('')
   const [historicoAlunoId, setHistoricoAlunoId] = useState<string | null>(null)
   const [unreadMessages, setUnreadMessages] = useState(0)
@@ -37,6 +39,11 @@ export default function AdminApp() {
   }, [token])
 
   const handleLogin = (newToken: string, needChangePassword?: boolean) => {
+    const hasTurso = !!localStorage.getItem('cms_token')
+    const hasSupabase = !!localStorage.getItem('supabase_token')
+    if (hasSupabase) console.log('[Auth] Login realizado via Supabase')
+    if (hasTurso) console.log('[Auth] Login realizado via Turso (custom JWT)')
+    if (hasTurso && hasSupabase) console.log('[Auth] Ambos os tokens estao presentes')
     setToken(newToken)
     setRole(getRoleFromToken())
     setMustChangePassword(!!needChangePassword)
@@ -53,9 +60,11 @@ export default function AdminApp() {
 
   const handleLogout = () => {
     localStorage.removeItem('cms_token')
+    localStorage.removeItem('supabase_token')
     setToken(null)
     setRole(null)
     setMustChangePassword(false)
+    setLoginView('turso')
     setView('dashboard')
   }
 
@@ -106,9 +115,33 @@ export default function AdminApp() {
   }, [token])
 
   if (!token) {
+    if (loginView === 'supabase') {
+      return (
+        <div className="admin-wrapper">
+          <AdminLoginSupabase onLogin={handleLogin} onBack={() => setLoginView('turso')} />
+        </div>
+      )
+    }
     return (
       <div className="admin-wrapper">
         <AdminLogin onLogin={handleLogin} />
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <button
+            onClick={() => setLoginView('supabase')}
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '8px 16px',
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontFamily: 'inherit',
+            }}
+          >
+            Login via Server S. (experimental)
+          </button>
+        </div>
       </div>
     )
   }
@@ -190,6 +223,8 @@ export default function AdminApp() {
         return <ImageLibrary />
       case 'users':
         return <UserManager currentUsername={getUsernameFromToken() || ''} />
+      case 'supabase_users':
+        return <SupabaseUserManager />
       case 'backups':
         return <BackupRestore />
       case 'setup':
@@ -250,7 +285,10 @@ export default function AdminApp() {
           {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
             <button className={view === 'historico_editor' ? 'active' : ''} onClick={() => setView('historico_editor')}>Histórico Escolar</button>
           ) : null}
-          <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários</button>
+          <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários (T.)</button>
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
+            <button className={view === 'supabase_users' ? 'active' : ''} onClick={() => setView('supabase_users')}>Usuários (Server S.)</button>
+          ) : null}
           {role === ROLES.SUPER_ADMIN ? (
             <>
               <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>

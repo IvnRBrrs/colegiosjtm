@@ -18,12 +18,22 @@ const INSERT_FIELDS = [
 router.get('/', async (req, res) => {
   try {
     const search = (req.query.search || '').trim()
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     let sql = 'SELECT * FROM alunos'
     let args = []
+    const conditions = []
+    if (!isSuper) {
+      conditions.push('company_id = ?')
+      args.push(company_id)
+    }
     if (search) {
-      sql += " WHERE nome LIKE ? OR cpf LIKE ? OR strftime('%Y', created_at) LIKE ?"
+      conditions.push("(nome LIKE ? OR cpf LIKE ? OR strftime('%Y', created_at) LIKE ?)")
       const p = `%${search}%`
-      args = [p, p, p]
+      args.push(p, p, p)
+    }
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ')
     }
     sql += ' ORDER BY created_at DESC'
     const result = await req.db.execute({ sql, args })
@@ -35,9 +45,13 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     const aluno = await req.db.execute({
-      sql: 'SELECT * FROM alunos WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'SELECT * FROM alunos WHERE id = ?'
+        : 'SELECT * FROM alunos WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     if (aluno.rows.length === 0) return res.status(404).json({ error: 'Aluno not found' })
 
@@ -61,6 +75,10 @@ router.post('/', async (req, res) => {
     const sets = ['id']
     const vals = [id]
     const placeholders = ['?']
+    const company_id = req.user.company_id || 'default'
+    sets.push('company_id')
+    vals.push(company_id)
+    placeholders.push('?')
     for (const field of INSERT_FIELDS) {
       if (req.body[field] !== undefined && req.body[field] !== null) {
         sets.push(field)
@@ -91,9 +109,13 @@ router.put('/:id', async (req, res) => {
     if (sets.length === 0) return res.status(400).json({ error: 'Nothing to update' })
     sets.push("updated_at = datetime('now')")
     args.push(req.params.id)
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: `UPDATE alunos SET ${sets.join(', ')} WHERE id = ?`,
-      args,
+      sql: isSuper
+        ? `UPDATE alunos SET ${sets.join(', ')} WHERE id = ?`
+        : `UPDATE alunos SET ${sets.join(', ')} WHERE id = ? AND company_id = ?`,
+      args: isSuper ? args : [...args, company_id],
     })
     res.json({ success: true })
   } catch (err) {
@@ -103,13 +125,19 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'DELETE FROM aluno_anexos WHERE aluno_id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'DELETE FROM aluno_anexos WHERE aluno_id = ?'
+        : 'DELETE FROM aluno_anexos WHERE aluno_id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     await req.db.execute({
-      sql: 'DELETE FROM alunos WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'DELETE FROM alunos WHERE id = ?'
+        : 'DELETE FROM alunos WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     res.json({ success: true })
   } catch (err) {
@@ -124,9 +152,10 @@ router.post('/:id/anexos', async (req, res) => {
       return res.status(400).json({ error: 'categoria, filename, data, type required' })
     }
     const id = crypto.randomUUID()
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'INSERT INTO aluno_anexos (id, aluno_id, categoria, filename, data, type) VALUES (?, ?, ?, ?, ?, ?)',
-      args: [id, req.params.id, categoria, filename, data, type],
+      sql: 'INSERT INTO aluno_anexos (id, aluno_id, categoria, filename, data, type, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, req.params.id, categoria, filename, data, type, company_id],
     })
     res.json({ success: true, id })
   } catch (err) {
@@ -136,9 +165,13 @@ router.post('/:id/anexos', async (req, res) => {
 
 router.delete('/anexos/:anexoId', async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'DELETE FROM aluno_anexos WHERE id = ?',
-      args: [req.params.anexoId],
+      sql: isSuper
+        ? 'DELETE FROM aluno_anexos WHERE id = ?'
+        : 'DELETE FROM aluno_anexos WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.anexoId] : [req.params.anexoId, company_id],
     })
     res.json({ success: true })
   } catch (err) {

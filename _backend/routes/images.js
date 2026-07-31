@@ -38,9 +38,10 @@ router.post('/upload', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDIT
     }
 
     const id = crypto.randomUUID()
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'INSERT INTO images (id, filename, data, type, component_type, thumbnail) VALUES (?, ?, ?, ?, ?, ?)',
-      args: [id, filename, data, type, component_type || null, thumbnail || null],
+      sql: 'INSERT INTO images (id, filename, data, type, component_type, thumbnail, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, filename, data, type, component_type || null, thumbnail || null, company_id],
     })
 
     res.json({ id, filename, type })
@@ -54,9 +55,13 @@ router.patch('/:id/thumbnail', authMiddleware, requireRole(ROLES.SUPER_ADMIN, RO
     const { thumbnail } = req.body
     if (!thumbnail) return res.status(400).json({ error: 'thumbnail is required' })
 
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'UPDATE images SET thumbnail = ? WHERE id = ?',
-      args: [thumbnail, req.params.id],
+      sql: isSuper
+        ? 'UPDATE images SET thumbnail = ? WHERE id = ?'
+        : 'UPDATE images SET thumbnail = ? WHERE id = ? AND company_id = ?',
+      args: isSuper ? [thumbnail, req.params.id] : [thumbnail, req.params.id, company_id],
     })
     res.json({ success: true })
   } catch (err) {
@@ -66,9 +71,13 @@ router.patch('/:id/thumbnail', authMiddleware, requireRole(ROLES.SUPER_ADMIN, RO
 
 router.delete('/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'DELETE FROM images WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'DELETE FROM images WHERE id = ?'
+        : 'DELETE FROM images WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     res.json({ success: true })
   } catch (err) {

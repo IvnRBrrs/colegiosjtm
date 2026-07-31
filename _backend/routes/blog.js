@@ -97,9 +97,10 @@ router.post('/posts', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITO
       slug = slug + '-' + Date.now()
     }
 
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: `INSERT INTO blog_posts (id, title, subtitle, content, author, date, tags, images, videos, slug)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO blog_posts (id, title, subtitle, content, author, date, tags, images, videos, slug, company_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         title,
@@ -111,6 +112,7 @@ router.post('/posts', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITO
         JSON.stringify(images || []),
         JSON.stringify(videos || []),
         slug,
+        company_id,
       ],
     })
 
@@ -141,11 +143,13 @@ router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.ED
       }
     }
 
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
       sql: `UPDATE blog_posts SET
         title = ?, subtitle = ?, content = ?, author = ?, date = ?,
         tags = ?, images = ?, videos = ?, slug = ?, published = ?
-        WHERE id = ?`,
+        WHERE id = ?` + (isSuper ? '' : ' AND company_id = ?'),
       args: [
         title ?? existing.rows[0].title,
         subtitle ?? existing.rows[0].subtitle,
@@ -158,6 +162,7 @@ router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.ED
         slug,
         published !== undefined ? (published ? 1 : 0) : existing.rows[0].published,
         req.params.id,
+        ...(isSuper ? [] : [company_id]),
       ],
     })
 
@@ -169,9 +174,13 @@ router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.ED
 
 router.delete('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN, ROLES.EDITOR_BLOG, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id = req.user.company_id || 'default'
     const result = await req.db.execute({
-      sql: 'DELETE FROM blog_posts WHERE id = ?',
-      args: [req.params.id],
+      sql: isSuper
+        ? 'DELETE FROM blog_posts WHERE id = ?'
+        : 'DELETE FROM blog_posts WHERE id = ? AND company_id = ?',
+      args: isSuper ? [req.params.id] : [req.params.id, company_id],
     })
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Post not found' })
     res.json({ success: true })

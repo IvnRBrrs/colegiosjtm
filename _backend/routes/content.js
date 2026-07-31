@@ -34,10 +34,11 @@ router.put('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMI
     const { key, value } = req.body
     if (!key) return res.status(400).json({ error: 'Key is required' })
 
+    const company_id = req.user.company_id || 'default'
     await req.db.execute({
-      sql: `INSERT INTO content (key, value, updated_at) VALUES (?, ?, datetime('now'))
+      sql: `INSERT INTO content (key, value, updated_at, company_id) VALUES (?, ?, datetime('now'), ?)
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
-      args: [key, value],
+      args: [key, value, company_id],
     })
     await req.db.execute({
       sql: `UPDATE content SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = '_content_version'`,
@@ -54,10 +55,11 @@ router.put('/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_
     const { entries } = req.body
     if (!entries) return res.status(400).json({ error: 'Entries required' })
 
+    const company_id_bulk = req.user.company_id || 'default'
     const statements = Object.entries(entries).map(([key, value]) => ({
-      sql: `INSERT INTO content (key, value, updated_at) VALUES (?, ?, datetime('now'))
+      sql: `INSERT INTO content (key, value, updated_at, company_id) VALUES (?, ?, datetime('now'), ?)
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
-      args: [key, value],
+      args: [key, value, company_id_bulk],
     }))
     if (statements.length > 0) {
       for (const stmt of statements) await req.db.execute(stmt)
@@ -74,9 +76,13 @@ router.put('/bulk', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_
 
 router.delete('/:key', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADMIN), async (req, res) => {
   try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const company_id_del = req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'DELETE FROM content WHERE key = ?',
-      args: [req.params.key],
+      sql: isSuper
+        ? 'DELETE FROM content WHERE key = ?'
+        : 'DELETE FROM content WHERE key = ? AND company_id = ?',
+      args: isSuper ? [req.params.key] : [req.params.key, company_id_del],
     })
     res.json({ success: true })
   } catch (err) {
