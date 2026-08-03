@@ -176,7 +176,7 @@ async function fetchWithCache<T>(id: string, fetcher: () => Promise<T>): Promise
   _pendingFetches.set(id, promise)
   promise.finally(() => {
     if (_pendingFetches.get(id) === promise) _pendingFetches.delete(id)
-  })
+  }).catch(() => {})
   return promise
 }
 
