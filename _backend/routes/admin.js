@@ -1,13 +1,19 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
+import { ROLES } from '../roles.js'
 import { rowsToObjects } from '../rows.js'
 
 const router = Router()
+
+const MESSAGE_ROLES = [ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.COORDENADOR_PEDAGOGICO, ROLES.SECRETARIA_ESCOLAR]
+const PRE_ENROLLMENT_ROLES = [ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.SECRETARIA_ESCOLAR]
 
 router.get('/preload', authMiddleware, async (req, res) => {
   try {
     const isSuper = req.user.role === 'super_admin'
     const company_id = req.user.company_id || 'default'
+    const canMessages = MESSAGE_ROLES.includes(req.user.role)
+    const canPreEnrollments = PRE_ENROLLMENT_ROLES.includes(req.user.role)
 
     const whereCompany = isSuper ? '' : ' WHERE company_id = ?'
     const args = isSuper ? [] : [company_id]
@@ -27,14 +33,18 @@ router.get('/preload', authMiddleware, async (req, res) => {
         sql: `SELECT tags FROM blog_posts WHERE tags != '[]'` + (isSuper ? '' : ' AND company_id = ?'),
         args: isSuper ? [] : [company_id],
       }),
-      req.db.execute({
-        sql: 'SELECT id, name, email, phone, message, created_at, read, archived FROM contact_messages' + whereCompany + ' ORDER BY created_at DESC',
-        args,
-      }),
-      req.db.execute({
-        sql: 'SELECT * FROM pre_enrollments' + whereCompany + ' ORDER BY created_at DESC',
-        args,
-      }),
+      canMessages
+        ? req.db.execute({
+            sql: 'SELECT id, name, email, phone, message, created_at, read, archived FROM contact_messages' + whereCompany + ' ORDER BY created_at DESC',
+            args,
+          })
+        : Promise.resolve({ rows: [], columns: [] }),
+      canPreEnrollments
+        ? req.db.execute({
+            sql: 'SELECT * FROM pre_enrollments' + whereCompany + ' ORDER BY created_at DESC',
+            args,
+          })
+        : Promise.resolve({ rows: [], columns: [] }),
     ])
 
     const content = {}

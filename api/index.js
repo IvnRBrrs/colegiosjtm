@@ -13,6 +13,16 @@ import seedRoutes from '../_backend/routes/seed.js'
 import blogRoutes from '../_backend/routes/blog.js'
 import historicoAlunosRoutes from '../_backend/routes/historico_alunos.js'
 import supabaseUsersRoutes from '../_backend/routes/supabase_users.js'
+import turmasRoutes from '../_backend/routes/turmas.js'
+import professoresRoutes from '../_backend/routes/professores.js'
+import disciplinasRoutes from '../_backend/routes/disciplinas.js'
+import matriculasRoutes from '../_backend/routes/matriculas.js'
+import notasRoutes from '../_backend/routes/notas.js'
+import frequenciaRoutes from '../_backend/routes/frequencia.js'
+import ocorrenciasRoutes from '../_backend/routes/ocorrencias.js'
+import conselhoClasseRoutes from '../_backend/routes/conselho_classe.js'
+import anosLetivosRoutes from '../_backend/routes/anos_letivos.js'
+import horariosRoutes from '../_backend/routes/horarios.js'
 import adminRoutes from '../_backend/routes/admin.js'
 import publicRoutes from '../_backend/routes/public.js'
 
@@ -69,8 +79,24 @@ app.use('/api/seed', seedRoutes)
 app.use('/api/blog', blogRoutes)
 app.use('/api/historico-alunos', historicoAlunosRoutes)
 app.use('/api/admin/supabase-users', supabaseUsersRoutes)
+app.use('/api/turmas', turmasRoutes)
+app.use('/api/professores', professoresRoutes)
+app.use('/api/disciplinas', disciplinasRoutes)
+app.use('/api/matriculas', matriculasRoutes)
+app.use('/api/notas', notasRoutes)
+app.use('/api/frequencia', frequenciaRoutes)
+app.use('/api/ocorrencias', ocorrenciasRoutes)
+app.use('/api/conselho-classe', conselhoClasseRoutes)
+app.use('/api/anos-letivos', anosLetivosRoutes)
+app.use('/api/horarios', horariosRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/public', publicRoutes)
+
+// 404 JSON para rotas /api não registradas (compatível com Vercel; no dev,
+// sem isto o fallback SPA do Vite responderia index.html para /api/*).
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Not found' })
+})
 
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err)

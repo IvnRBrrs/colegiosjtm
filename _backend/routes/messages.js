@@ -5,7 +5,7 @@ import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
-router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
+router.get('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.COORDENADOR_PEDAGOGICO, ROLES.SECRETARIA_ESCOLAR), async (req, res) => {
   try {
     const isSuper = req.user.role === ROLES.SUPER_ADMIN
     const company_id = req.user.company_id || 'default'
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
+router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.COORDENADOR_PEDAGOGICO, ROLES.SECRETARIA_ESCOLAR), async (req, res) => {
   try {
     const isSuper = req.user.role === ROLES.SUPER_ADMIN
     const company_id = req.user.company_id || 'default'
@@ -55,7 +55,7 @@ router.put('/:id/read', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GES
   }
 })
 
-router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
+router.put('/:id/archive', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.COORDENADOR_PEDAGOGICO, ROLES.SECRETARIA_ESCOLAR), async (req, res) => {
   try {
     const isSuper = req.user.role === ROLES.SUPER_ADMIN
     const company_id = req.user.company_id || 'default'

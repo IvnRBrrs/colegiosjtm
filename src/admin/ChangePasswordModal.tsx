@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '../cms/api'
+import { getUsernameFromToken } from '../cms/auth'
 
 interface ChangePasswordModalProps {
   onSuccess: (newToken: string) => void
@@ -45,7 +46,7 @@ export default function ChangePasswordModal({ onSuccess, onLogout }: ChangePassw
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.6)',
+      background: 'rgba(15,23,42,0.95)',
     }}>
       <div style={{
         background: '#fff', borderRadius: 12, padding: 32,
@@ -56,18 +57,65 @@ export default function ChangePasswordModal({ onSuccess, onLogout }: ChangePassw
           Sua senha foi resetada. Crie uma nova senha para continuar.
         </p>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
+          {/* Username real oculto (padrão oficial Chromium p/ troca de senha):
+              permite ao Chrome associar a troca à conta correta sem o popup
+              "Selecionar qual conta atualizar" */}
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            defaultValue={getUsernameFromToken() || ''}
+            style={{ display: 'none' }}
+            tabIndex={-1}
+            aria-hidden="true"
+          />
           <div className="admin-field">
             <label>Senha Atual</label>
-            <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              id="current-password"
+              name="current-password"
+              autoComplete="current-password"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore="true"
+              required
+            />
           </div>
           <div className="admin-field">
             <label>Nova Senha</label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={4} />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              id="new-password"
+              name="new-password"
+              autoComplete="new-password"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore="true"
+              required
+              minLength={4}
+            />
           </div>
           <div className="admin-field">
             <label>Confirmar Nova Senha</label>
-            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={4} />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              id="confirm-password"
+              name="confirm-password"
+              autoComplete="new-password"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore="true"
+              required
+              minLength={4}
+            />
           </div>
 
           {error && <p className="admin-error" style={{ marginBottom: 12 }}>{error}</p>}

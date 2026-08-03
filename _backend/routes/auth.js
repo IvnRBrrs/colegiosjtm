@@ -7,7 +7,7 @@ import supabaseAdmin from '../supabaseAdmin.js'
 
 const router = Router()
 
-router.post('/setup', async (req, res) => {
+router.post('/setup', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res) => {
   try {
     const { username, password, email } = req.body
     if (!username || !password) {
@@ -72,7 +72,8 @@ router.post('/login', async (req, res) => {
   }
 })
 
-// User list — super_admin sees all; gestor_admin sees same or lower roles; others see only themselves
+// User list — ONLY super_admin and gestor_admin can see the saved users.
+// Any other role receives an empty list (no user data is leaked).
 router.get('/users', authMiddleware, async (req, res) => {
   try {
     let role = req.user.role
@@ -84,26 +85,23 @@ router.get('/users', authMiddleware, async (req, res) => {
       if (lookup.rows.length > 0) role = lookup.rows[0].role
     }
 
-    // 1. Try Turso users first
-    const allTurso = await req.db.execute('SELECT id, username, email, role, company_id, created_at, must_change_password FROM users ORDER BY created_at')
-    let tursoUsers = rowsToObjects(allTurso.rows, allTurso.columns)
-
-    if (role === ROLES.SUPER_ADMIN) {
-      // Super admin sees all
-    } else if (role === ROLES.GESTOR_ADMIN) {
-      // gestor_admin sees users with weight <= GESTOR_WEIGHT (gestor, editor_admin, editor_blog)
-      const maxWeight = ROLE_WEIGHT[ROLES.GESTOR_ADMIN]
-      tursoUsers = tursoUsers.filter(u => (ROLE_WEIGHT[u.role] || 0) <= maxWeight)
-    } else if (tursoUsers.some(u => u.username === req.user.username)) {
-      // Non-gestor but exists in Turso: only themselves
-      tursoUsers = tursoUsers.filter(u => u.username === req.user.username)
-    } else {
-      tursoUsers = []
+    if (role !== ROLES.SUPER_ADMIN && role !== ROLES.GESTOR_ADMIN) {
+      return res.json([])
     }
 
-    // 2. Try Supabase users (for gestor_admin or Supabase-only users)
+    // 1. Try Turso users first
+    const allTurso = await req.db.execute('SELECT id, username, email, role, company_id, professor_id, created_at, must_change_password FROM users ORDER BY created_at')
+    let tursoUsers = rowsToObjects(allTurso.rows, allTurso.columns)
+
+    if (role === ROLES.GESTOR_ADMIN) {
+      // gestor_admin sees users with weight <= GESTOR_WEIGHT (gestor, editor_admin, editor_blog, ...)
+      const maxWeight = ROLE_WEIGHT[ROLES.GESTOR_ADMIN]
+      tursoUsers = tursoUsers.filter(u => (ROLE_WEIGHT[u.role] || 0) <= maxWeight)
+    }
+
+    // 2. Try Supabase users (super/gestor only)
     let supabaseUsers = []
-    if (supabaseAdmin && (role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || req.user.supabaseUid)) {
+    if (supabaseAdmin) {
       try {
         const { data, error } = await supabaseAdmin.auth.admin.listUsers()
         if (!error && data?.users) {
@@ -113,6 +111,7 @@ router.get('/users', authMiddleware, async (req, res) => {
             email: su.email,
             role: su.user_metadata?.role || 'editor_admin',
             company_id: su.user_metadata?.company_id || 'default',
+            professor_id: su.user_metadata?.professor_id || '',
             created_at: su.created_at,
             must_change_password: 0,
           }))
@@ -120,9 +119,6 @@ router.get('/users', authMiddleware, async (req, res) => {
           if (role === ROLES.GESTOR_ADMIN) {
             const maxWeight = ROLE_WEIGHT[ROLES.GESTOR_ADMIN]
             supabaseUsers = supabaseUsers.filter(u => (ROLE_WEIGHT[u.role] || 0) <= maxWeight)
-          } else if (role !== ROLES.SUPER_ADMIN) {
-            // Non-gestor Supabase-only user: only themselves
-            supabaseUsers = supabaseUsers.filter(u => u.id === req.user.supabaseUid || u.email === req.user.username)
           }
         }
       } catch {}
@@ -140,7 +136,7 @@ router.get('/users', authMiddleware, async (req, res) => {
 
 router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN), async (req, res) => {
   try {
-    const { username, password, role, email } = req.body
+    const { username, password, role, email, professor_id } = req.body
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' })
     }
@@ -149,8 +145,32 @@ router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTO
     }
 
     const newRole = role || ROLES.EDITOR_ADMIN
+    if (newRole === ROLES.SUPER_ADMIN && req.user.role !== ROLES.SUPER_ADMIN) {
+      return res.status(403).json({ error: 'Somente super_admin pode criar usuários super_admin' })
+    }
     if (req.user.role === ROLES.GESTOR_ADMIN && !canCreateRole(req.user.role, newRole)) {
       return res.status(403).json({ error: 'Cannot create users with this role' })
+    }
+
+    const company_id = req.body.company_id || req.user.company_id || 'default'
+
+    // Vínculo com cadastro de professor: só para role professor, professor
+    // existente na mesma empresa e sem outro login já vinculado.
+    const pid = professor_id !== undefined && professor_id !== null ? String(professor_id).trim() : ''
+    if (pid) {
+      if (newRole !== ROLES.PROFESSOR) {
+        return res.status(400).json({ error: 'professor_id só pode ser vinculado a um usuário professor' })
+      }
+      const prof = await req.db.execute({
+        sql: 'SELECT id FROM professores WHERE id = ? AND company_id = ?',
+        args: [pid, company_id],
+      })
+      if (prof.rows.length === 0) return res.status(400).json({ error: 'Professor não encontrado' })
+      const dup = await req.db.execute({
+        sql: 'SELECT id FROM users WHERE professor_id = ? AND company_id = ?',
+        args: [pid, company_id],
+      })
+      if (dup.rows.length > 0) return res.status(400).json({ error: 'Este professor já está vinculado a outro login' })
     }
 
     const existing = await req.db.execute({
@@ -165,10 +185,9 @@ router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTO
     const hash = await bcrypt.hash(password, 10)
     const userRole = role || ROLES.EDITOR_ADMIN
     const userEmail = email || (username + '@colegiostjm.com.br')
-    const company_id = req.body.company_id || req.user.company_id || 'default'
     await req.db.execute({
-      sql: 'INSERT INTO users (username, password_hash, role, email, company_id) VALUES (?, ?, ?, ?, ?)',
-      args: [username, hash, userRole, userEmail, company_id],
+      sql: 'INSERT INTO users (username, password_hash, role, email, company_id, professor_id) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [username, hash, userRole, userEmail, company_id, pid],
     })
 
     res.json({ success: true })
@@ -185,7 +204,7 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
 
     // Check if this is a Turso user
     const tursoTarget = await req.db.execute({
-      sql: 'SELECT id, username, role FROM users WHERE id = ?',
+      sql: 'SELECT id, username, role, company_id FROM users WHERE id = ?',
       args: [isNaN(targetId) ? -1 : parseInt(targetId)],
     })
 
@@ -201,6 +220,8 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
         if (me.rows.length === 0 || me.rows[0].id !== targetUser.id) {
           return res.status(403).json({ error: 'Forbidden' })
         }
+        // Non-manager users can only reset their own password (via /reset-password or /change-password)
+        return res.status(403).json({ error: 'Somente resetar sua própria senha' })
       }
 
       // gestor_admin can only edit users with role <= GESTOR_WEIGHT
@@ -223,6 +244,9 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
       }
       if (role) {
         if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
+        if (role === ROLES.SUPER_ADMIN && !isSuper) {
+          return res.status(403).json({ error: 'Somente super_admin pode atribuir super_admin' })
+        }
         if (!isSuper) {
           if (!isGestor || !canManageRole(ROLES.GESTOR_ADMIN, role)) {
             return res.status(403).json({ error: 'Cannot assign this role' })
@@ -239,6 +263,28 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
         if (!isSuper) return res.status(403).json({ error: 'Only super_admin can change company_id' })
         sets.push('company_id = ?')
         args.push(req.body.company_id)
+      }
+      if (req.body.professor_id !== undefined) {
+        const pid = String(req.body.professor_id).trim()
+        const effectiveRole = role !== undefined ? role : targetUser.role
+        const companyForUser = req.body.company_id !== undefined ? req.body.company_id : (targetUser.company_id || 'default')
+        if (pid) {
+          if (effectiveRole !== ROLES.PROFESSOR) {
+            return res.status(400).json({ error: 'professor_id só pode ser vinculado a um usuário professor' })
+          }
+          const prof = await req.db.execute({
+            sql: 'SELECT id FROM professores WHERE id = ? AND company_id = ?',
+            args: [pid, companyForUser],
+          })
+          if (prof.rows.length === 0) return res.status(400).json({ error: 'Professor não encontrado' })
+          const dup = await req.db.execute({
+            sql: 'SELECT id FROM users WHERE professor_id = ? AND company_id = ? AND id != ?',
+            args: [pid, companyForUser, targetUser.id],
+          })
+          if (dup.rows.length > 0) return res.status(400).json({ error: 'Este professor já está vinculado a outro login' })
+        }
+        sets.push('professor_id = ?')
+        args.push(pid)
       }
       if (sets.length === 0) {
         return res.status(400).json({ error: 'Nothing to update' })
@@ -266,20 +312,57 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
       if (!canManageRole(ROLES.GESTOR_ADMIN, targetRole)) {
         return res.status(403).json({ error: 'Cannot edit users with higher role' })
       }
-    } else if (!isSuper && suid !== targetId) {
-      return res.status(403).json({ error: 'Forbidden' })
+    } else if (!isSuper) {
+      // Non-manager users can only reset their own password (via /reset-password or /change-password)
+      return res.status(403).json({ error: 'Somente resetar sua própria senha' })
     }
 
-    const { email, role } = req.body
+    const { email, role, professor_id } = req.body
     const supdate = {}
     if (email !== undefined) supdate.email = email
-    if (isSuper && role) {
-      if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
-      supdate.user_metadata = { role, company_id: req.body.company_id || 'default' }
-    } else if (isGestor && role) {
-      if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
-      if (!canManageRole(ROLES.GESTOR_ADMIN, role)) return res.status(403).json({ error: 'Cannot assign this role' })
-      supdate.user_metadata = { role, company_id: req.body.company_id || 'default' }
+    if (role !== undefined || req.body.company_id !== undefined || professor_id !== undefined) {
+      const { data: td, error: tdErr } = await supabaseAdmin.auth.admin.getUserById(targetId)
+      if (tdErr || !td?.user) return res.status(404).json({ error: 'User not found' })
+      const existingMeta = td.user.user_metadata || {}
+      const meta = { ...existingMeta }
+      if (role !== undefined) {
+        if (!ROLE_NAMES[role]) return res.status(400).json({ error: 'Invalid role' })
+        if (role === ROLES.SUPER_ADMIN && !isSuper) {
+          return res.status(403).json({ error: 'Somente super_admin pode atribuir super_admin' })
+        }
+        if (!isSuper) {
+          if (!isGestor || !canManageRole(ROLES.GESTOR_ADMIN, role)) {
+            return res.status(403).json({ error: 'Cannot assign this role' })
+          }
+        }
+        meta.role = role
+      }
+      if (req.body.company_id !== undefined) {
+        if (!isSuper) return res.status(403).json({ error: 'Only super_admin can change company_id' })
+        meta.company_id = req.body.company_id || 'default'
+      }
+      if (professor_id !== undefined) {
+        const pid = String(professor_id).trim()
+        const effectiveRole = role !== undefined ? role : (existingMeta.role || 'editor_admin')
+        const companyForUser = meta.company_id || 'default'
+        if (pid) {
+          if (effectiveRole !== ROLES.PROFESSOR) {
+            return res.status(400).json({ error: 'professor_id só pode ser vinculado a um usuário professor' })
+          }
+          const prof = await req.db.execute({
+            sql: 'SELECT id FROM professores WHERE id = ? AND company_id = ?',
+            args: [pid, companyForUser],
+          })
+          if (prof.rows.length === 0) return res.status(400).json({ error: 'Professor não encontrado' })
+          const dup = await req.db.execute({
+            sql: 'SELECT id FROM users WHERE professor_id = ? AND company_id = ?',
+            args: [pid, companyForUser],
+          })
+          if (dup.rows.length > 0) return res.status(400).json({ error: 'Este professor já está vinculado a outro login' })
+        }
+        meta.professor_id = pid
+      }
+      supdate.user_metadata = meta
     }
     if (Object.keys(supdate).length === 0) return res.status(400).json({ error: 'Nothing to update' })
 
@@ -396,7 +479,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       args: [hash, req.user.username],
     })
 
-    const newToken = generateToken(req.user.username, req.user.role || ROLES.SUPER_ADMIN)
+    const newToken = generateToken(req.user.username, user.role || null, user.company_id || 'default')
     res.json({ success: true, token: newToken })
   } catch (err) {
     res.status(500).json({ error: String(err) })

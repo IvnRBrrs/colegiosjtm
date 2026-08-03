@@ -23,11 +23,13 @@ export async function authMiddleware(req, res, next) {
       if (user && !error) {
         req.user = {
           username: user.email || user.id,
-          role: user.user_metadata?.role || user.role || ROLES.SUPER_ADMIN,
+          // Never default to super_admin — a missing role metadata must DENY, not escalate.
+          role: user.user_metadata?.role || null,
           company_id: user.user_metadata?.company_id || 'default',
           supabaseUid: user.id,
+          professor_id: user.user_metadata?.professor_id || '',
         }
-        console.log('[Auth Middleware] Autenticado via Supabase:', req.user.username, 'role:', req.user.role, 'company_id:', req.user.company_id)
+        console.log('[Auth Middleware] Autenticado via Supabase:', req.user.username, 'role:', req.user.role, 'company_id:', req.user.company_id, 'professor_id:', req.user.professor_id)
         return next()
       }
     } catch {}
@@ -36,11 +38,24 @@ export async function authMiddleware(req, res, next) {
   // 2. Fallback: custom JWT (Turso)
   try {
     const decoded = jwt.verify(token, JWT_SECRET)
+    let professorId = ''
+    // Professores têm o vínculo consultado no banco a cada request, para que
+    // mudanças de vínculo sejam aplicadas imediatamente (sem depender do token).
+    if (decoded.role === ROLES.PROFESSOR && req.db) {
+      try {
+        const r = await req.db.execute({
+          sql: 'SELECT professor_id FROM users WHERE username = ?',
+          args: [decoded.username],
+        })
+        professorId = r.rows.length > 0 ? String(r.rows[0].professor_id || '') : ''
+      } catch {}
+    }
     req.user = {
       ...decoded,
       company_id: decoded.company_id || 'default',
+      professor_id: professorId,
     }
-    console.log('[Auth Middleware] Autenticado via Turso (custom JWT):', req.user.username, 'role:', req.user.role, 'company_id:', req.user.company_id)
+    console.log('[Auth Middleware] Autenticado via Turso (custom JWT):', req.user.username, 'role:', req.user.role, 'company_id:', req.user.company_id, 'professor_id:', professorId)
     next()
   } catch {
     return res.status(401).json({ error: 'Invalid token' })

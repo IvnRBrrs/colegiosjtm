@@ -5,7 +5,43 @@ import { rowsToObjects } from '../rows.js'
 
 const router = Router()
 
-router.use(authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN))
+const DROPDOWN_ROLES = [
+  ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.COORDENADOR_PEDAGOGICO,
+  ROLES.SECRETARIA_ESCOLAR, ROLES.FINANCEIRO, ROLES.PROFESSOR,
+]
+
+// Read-only minimal list (id, nome) for dropdowns — professor/financeiro não podem
+// acessar o cadastro completo de alunos (CPF, endereço, responsáveis, etc.)
+router.get('/select', authMiddleware, requireRole(...DROPDOWN_ROLES), async (req, res) => {
+  try {
+    const isSuper = req.user.role === ROLES.SUPER_ADMIN
+    const isProfessor = req.user.role === ROLES.PROFESSOR
+    const company_id = req.user.company_id || 'default'
+    let sql, args
+    if (isProfessor) {
+      // Professor só vê os alunos das turmas em que é responsável ou onde leciona
+      const pid = req.user.professor_id || ''
+      if (!pid) return res.json([])
+      sql = `SELECT DISTINCT a.id, a.nome
+             FROM alunos a
+             JOIN aluno_turmas at ON at.aluno_id = a.id
+             JOIN turmas t ON t.id = at.turma_id
+             WHERE a.company_id = ?
+               AND (t.professor_responsavel_id = ? OR t.id IN (SELECT turma_id FROM turma_disciplinas WHERE professor_id = ? AND company_id = ?))
+             ORDER BY a.nome`
+      args = [company_id, pid, pid, company_id]
+    } else {
+      sql = `SELECT id, nome FROM alunos` + (isSuper ? '' : ' WHERE company_id = ?') + ' ORDER BY nome'
+      args = isSuper ? [] : [company_id]
+    }
+    const result = await req.db.execute({ sql, args })
+    res.json(rowsToObjects(result.rows, result.columns))
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
+router.use(authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTOR_ADMIN, ROLES.COORDENADOR_PEDAGOGICO, ROLES.SECRETARIA_ESCOLAR))
 
 const INSERT_FIELDS = [
   'nome', 'sexo', 'escolaridade', 'turma', 'data_nascimento',

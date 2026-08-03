@@ -42,13 +42,18 @@ export default function AdminLoginSupabase({ onLogin, onBack }: AdminLoginSupaba
         <p className="admin-login-sub" style={{ textAlign: 'center' }}>
           Login via Server S. (experimental)
         </p>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
           <div className="admin-field">
             <label>E-mail</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              name="username"
+              autoComplete="username"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore="true"
               required
             />
           </div>
@@ -58,6 +63,11 @@ export default function AdminLoginSupabase({ onLogin, onBack }: AdminLoginSupaba
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              name="current-password"
+              autoComplete="current-password"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore="true"
               required
             />
           </div>

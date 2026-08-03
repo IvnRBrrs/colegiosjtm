@@ -9,6 +9,7 @@ interface User {
   email: string
   role: string
   company_id?: string
+  professor_id?: string
   created_at: string
   must_change_password?: number
 }
@@ -19,11 +20,13 @@ interface UserManagerProps {
 
 export default function UserManager({ currentUsername = '' }: UserManagerProps) {
   const [users, setUsers] = useState<User[]>(() => getCachedUsersSync() || [])
+  const [professores, setProfessores] = useState<{ id: string; nome: string }[]>([])
   const [newUsername, setNewUsername] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState(ROLES.EDITOR_ADMIN)
-  const [editingUser, setEditingUser] = useState<{ id: number | string; username: string; role: string; email: string } | null>(null)
+  const [newProfessorId, setNewProfessorId] = useState('')
+  const [editingUser, setEditingUser] = useState<{ id: number | string; username: string; role: string; email: string; professor_id?: string } | null>(null)
   const [resetData, setResetData] = useState<{ id: number | string; username: string } | null>(null)
   const [tempPassword, setTempPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -32,6 +35,12 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
   const [error, setError] = useState('')
 
   useEffect(() => { loadUsers() }, [])
+
+  useEffect(() => {
+    if (getRoleFromToken() === ROLES.SUPER_ADMIN || getRoleFromToken() === ROLES.GESTOR_ADMIN) {
+      api.get('/professores').then(({ data }) => setProfessores(data)).catch(() => { })
+    }
+  }, [])
 
   const loadUsers = async () => {
     setError('')
@@ -56,11 +65,13 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
         password: newPassword,
         role: newRole,
         email: newEmail || undefined,
+        professor_id: newRole === ROLES.PROFESSOR && newProfessorId ? newProfessorId : undefined,
       })
       setNewUsername('')
       setNewPassword('')
       setNewEmail('')
       setNewRole(ROLES.EDITOR_ADMIN)
+      setNewProfessorId('')
       setStatus('Usuário criado com sucesso!')
       invalidateCache('users')
       loadUsers()
@@ -69,12 +80,21 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
     }
   }
 
-  const saveUser = async (id: number | string, username: string, role: string, email: string) => {
+  const saveUser = async (id: number | string, username: string, role: string, email: string, professor_id?: string) => {
     try {
       const payload: Record<string, string> = { email }
       if (isSuperAdmin) {
         payload.username = username
         payload.role = role
+      } else if (isGestorAdmin) {
+        payload.role = role
+      }
+      // Vincular professor só faz sentido para o role professor;
+      // ao trocar para outro role o vínculo é removido.
+      if (role === ROLES.PROFESSOR) {
+        payload.professor_id = professor_id || ''
+      } else {
+        payload.professor_id = ''
       }
       await api.put(`/auth/users/${id}`, payload)
       setEditingUser(null)
@@ -129,9 +149,11 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
   const isGestorAdmin = roleFromToken === ROLES.GESTOR_ADMIN
   const canManageAll = isSuperAdmin || isGestorAdmin
 
-  const roleOptions = Object.entries(ROLE_NAMES).map(([value, label]) => (
-    <option key={value} value={value}>{label}</option>
-  ))
+  const roleOptions = Object.entries(ROLE_NAMES)
+    .filter(([value]) => isSuperAdmin || value !== ROLES.SUPER_ADMIN)
+    .map(([value, label]) => (
+      <option key={value} value={value}>{label}</option>
+    ))
 
   return (
     <div className="admin-users">
@@ -145,7 +167,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
           </div>
           <div className="admin-field">
             <label>Senha</label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="senha" />
+            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="senha" autoComplete="new-password" />
           </div>
           <div className="admin-field">
             <label>Email</label>
@@ -157,6 +179,15 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
               {roleOptions}
             </select>
           </div>
+          {newRole === ROLES.PROFESSOR && (
+            <div className="admin-field">
+              <label>Professor vinculado</label>
+              <select value={newProfessorId} onChange={(e) => setNewProfessorId(e.target.value)}>
+                <option value="">Nenhum</option>
+                {professores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+          )}
           <button className="btn btn-primary" onClick={createUser}>Criar Usuário</button>
         </div>
       )}
@@ -172,6 +203,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
               <th>Usuário</th>
               <th>Email</th>
               <th>Função</th>
+              <th>Professor</th>
               <th>Empresa</th>
               <th>Criado em</th>
               <th>Ações</th>
@@ -180,7 +212,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
           <tbody>
             {users.map((u) => {
               const isEditingThis = editingUser !== null && editingUser.id === u.id
-              const canEditRole = isSuperAdmin
+              const canEditRole = isSuperAdmin || isGestorAdmin
               return (
                 <tr key={u.id}>
                   <td>{typeof u.id === 'string' ? u.id.substring(0, 8) + '...' : u.id}</td>
@@ -226,21 +258,31 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
                       ROLE_NAMES[u.role] || u.role
                     )}
                   </td>
+                  <td>
+                    {isEditingThis && canEditRole && editingUser!.role === ROLES.PROFESSOR ? (
+                      <select value={editingUser!.professor_id || ''} onChange={(e) => setEditingUser({ ...editingUser!, professor_id: e.target.value })}>
+                        <option value="">Nenhum</option>
+                        {professores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
+                    ) : (
+                      professores.find((p) => p.id === u.professor_id)?.nome || '-'
+                    )}
+                  </td>
                   <td>{u.company_id || '-'}</td>
                   <td>{formatDate(u.created_at)}</td>
                   <td>
                     {isEditingThis ? (
                       <>
-                        <button className="btn btn-sm" onClick={() => saveUser(u.id, editingUser!.username, editingUser!.role, editingUser!.email)}>Salvar</button>
+                        <button className="btn btn-sm" onClick={() => saveUser(u.id, editingUser!.username, editingUser!.role, editingUser!.email, editingUser!.professor_id)}>Salvar</button>
                         <button className="btn btn-sm btn-outline" onClick={() => setEditingUser(null)}>Cancelar</button>
                       </>
                     ) : (
                       <>
-                        {(canManageAll || u.username === currentUsername) && (
-                          <button className="btn btn-sm" onClick={() => setEditingUser({ id: u.id, username: u.username, role: u.role, email: u.email || '' })}>Editar</button>
+                        {canManageAll && (
+                          <button className="btn btn-sm" onClick={() => { setResetData(null); setEditingUser({ id: u.id, username: u.username, role: u.role, email: u.email || '', professor_id: u.professor_id || '' }) }}>Editar</button>
                         )}
                         {(canManageAll || u.username === currentUsername) && (
-                          <button className="btn btn-sm" onClick={() => setResetData({ id: u.id, username: u.username })}>Resetar Senha</button>
+                          <button className="btn btn-sm" onClick={() => { setEditingUser(null); setResetData({ id: u.id, username: u.username }) }}>Resetar Senha</button>
                         )}
                       </>
                     )}
@@ -259,7 +301,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(15,23,42,0.95)',
         }}>
           <div style={{
             background: '#fff', borderRadius: 12, padding: 32,
@@ -278,6 +320,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
                 onChange={(e) => setTempPassword(e.target.value)}
                 placeholder="mín. 4 caracteres"
                 minLength={4}
+                autoComplete="new-password"
               />
             </div>
             <div className="admin-field">
@@ -288,6 +331,7 @@ export default function UserManager({ currentUsername = '' }: UserManagerProps) 
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="repita a senha"
                 minLength={4}
+                autoComplete="new-password"
               />
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
