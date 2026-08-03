@@ -85,7 +85,7 @@ export default function AdminDashboard({ onNavigate, unreadMessages, unreadPreEn
     ],
     sistema: [
       item('users', '👥', 'Usuários (T.)', 'Criar e gerenciar usuários', canManageUsers),
-      item('supabase_users', '🔐', 'Usuários (Server S.)', 'Gerenciar usuários do Supabase', isSuperAdmin || isGestorAdmin),
+      item('supabase_users', '🔐', 'Usuários (Server S.)', 'Gerenciar usuários do Server S.', isSuperAdmin || isGestorAdmin),
       item('backups', '💾', 'Backups', 'Gerenciar backups do conteúdo', isSuperAdmin),
       item('setup', '⚙️', 'Configuração Inicial', 'Criar usuário admin (primeiro acesso)', isSuperAdmin),
       item('login_log', '🕵️', 'Log de Acesso', 'Histórico de logins', isSuperAdmin),
