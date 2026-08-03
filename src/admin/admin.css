@@ -13,6 +13,82 @@
   flex-direction: column;
   padding: 24px 16px;
   flex-shrink: 0;
+  position: relative;
+  transition: width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 20px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.sidebar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+}
+
+.admin-sidebar.collapsed {
+  width: 56px;
+  padding: 24px 8px;
+}
+
+.admin-sidebar.collapsed h2 {
+  display: none;
+}
+
+.admin-sidebar.collapsed .sidebar-collapse-btn {
+  right: 14px;
+}
+
+.admin-sidebar.collapsed nav {
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.admin-sidebar.collapsed .sidebar-rail-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  font-size: 1.1rem;
+}
+
+.admin-sidebar.collapsed .sidebar-rail-btn .sidebar-btn-icon {
+  margin-right: 0;
+}
+
+.admin-sidebar.collapsed .sidebar-rail-btn .sidebar-badge {
+  top: 0;
+  right: -2px;
+}
+
+.admin-sidebar.collapsed .admin-sidebar-bottom {
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-sidebar.collapsed .admin-sidebar-bottom a,
+.admin-sidebar.collapsed .admin-sidebar-bottom button {
+  text-align: center;
+  padding: 6px 0;
+  font-size: 0.8rem;
 }
 
 .admin-sidebar h2 {
@@ -51,6 +127,64 @@
   background: rgba(255, 255, 255, 0.12);
   color: white;
   font-weight: 600;
+}
+
+/* ===== Sidebar: grupos por categoria ===== */
+.admin-sidebar nav .sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-sidebar .sidebar-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 12px 12px 4px;
+  cursor: pointer;
+}
+
+.admin-sidebar .sidebar-group-header:hover {
+  background: none;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.admin-sidebar .sidebar-group-badge-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.admin-sidebar .sidebar-chevron {
+  margin-left: auto;
+  font-size: 0.7rem;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.admin-sidebar .sidebar-chevron.open {
+  transform: rotate(90deg);
+}
+
+.admin-sidebar .sidebar-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+
+.admin-sidebar .sidebar-group-items button {
+  padding: 8px 12px 8px 20px;
+  font-size: 0.85rem;
 }
 
 .admin-sidebar-bottom {
@@ -260,6 +394,71 @@
   padding: 2px 8px;
   border-radius: 100px;
   margin-left: 4px;
+}
+
+/* ===== Dashboard: categorias (abas) ===== */
+.admin-dashboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.admin-dashboard-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 12px 18px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  transition: all 0.2s;
+}
+
+.admin-dashboard-tab:hover {
+  border-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.admin-dashboard-tab.active {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+  color: white;
+}
+
+.admin-dashboard-tab .dashboard-tab-chevron {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.admin-dashboard-tab.active .dashboard-tab-chevron {
+  transform: rotate(90deg);
+}
+
+.admin-dashboard-tab .dashboard-tab-badge {
+  background: #e53935;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.admin-dashboard-group {
+  margin-bottom: 48px;
 }
 
 /* ===== Section Grid ===== */
@@ -1103,9 +1302,17 @@
     margin-right: 24px;
   }
 
+  .sidebar-collapse-btn {
+    display: none;
+  }
+
   .admin-sidebar nav {
     flex-direction: row;
     flex-wrap: wrap;
+  }
+
+  .admin-sidebar nav .sidebar-group {
+    width: 100%;
   }
 
   .admin-sidebar-bottom {

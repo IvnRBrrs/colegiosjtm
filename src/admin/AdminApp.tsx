@@ -1,11 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../cms/api'
-import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos, HistoricoEditor, SupabaseUserManager } from './index'
+import { AdminLogin, AdminDashboard, SectionEditor, PageManager, ImageLibrary, StyleEditor, BackupRestore, UserManager, HistoricoAlunos, HistoricoEditor, SupabaseUserManager, TurmasManager, ProfessoresManager, DisciplinasManager, MatriculasManager, NotasManager, FrequenciaManager, OcorrenciasManager, ConselhoClasseManager, AnosLetivosManager, GradeHorariaManager } from './index'
 import AdminLoginSupabase from './AdminLoginSupabase'
 import { getRoleFromToken, getUsernameFromToken, ROLES } from '../cms/auth'
 import { fetchAdminPreload, fetchLoginLog, deleteLoginLog } from '../cms/api'
-import { seedCache, getCachedMessagesSync, getCachedPreEnrollmentsSync } from '../cms/contentCache'
+import { seedCache, getCachedMessagesSync, getCachedPreEnrollmentsSync, invalidateCache } from '../cms/contentCache'
 import ChangePasswordModal from './ChangePasswordModal'
+
+const VIEW_GROUP: Record<string, string> = {
+  pages: 'conteudo',
+  section: 'conteudo',
+  images: 'conteudo',
+  messages: 'comunicacao',
+  pre_enrollments: 'comunicacao',
+  historico_alunos: 'cadastros',
+  historico_editor: 'cadastros',
+  turmas: 'cadastros',
+  professores: 'cadastros',
+  disciplinas: 'cadastros',
+  anos_letivos: 'cadastros',
+  matriculas: 'academico',
+  notas: 'academico',
+  frequencia: 'academico',
+  ocorrencias: 'academico',
+  conselho_classe: 'academico',
+  grade_horaria: 'academico',
+  users: 'sistema',
+  supabase_users: 'sistema',
+  backups: 'sistema',
+  setup: 'sistema',
+  login_log: 'sistema',
+}
 
 export default function AdminApp() {
   const [token, setToken] = useState(localStorage.getItem('cms_token') || localStorage.getItem('supabase_token'))
@@ -17,6 +42,11 @@ export default function AdminApp() {
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [unreadPreEnrollments, setUnreadPreEnrollments] = useState(0)
   const [mustChangePassword, setMustChangePassword] = useState(false)
+  const [openGroups, setOpenGroups] = useState<string[]>([])
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('admin_sidebar_collapsed') === '1' } catch { return false }
+  })
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 769px)').matches)
 
   const hydratePreload = (data: any) => {
     if (data.content) seedCache('global_content', data.content)
@@ -37,6 +67,18 @@ export default function AdminApp() {
       fetchAdminPreload().then(hydratePreload).catch(() => { })
     }
   }, [token])
+
+  useEffect(() => {
+    const g = VIEW_GROUP[view]
+    if (g && !openGroups.includes(g)) setOpenGroups((prev) => [...prev, g])
+  }, [view, openGroups])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 769px)')
+    const onChange = () => setIsDesktop(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   const handleLogin = (newToken: string, needChangePassword?: boolean) => {
     const hasTurso = !!localStorage.getItem('cms_token')
@@ -61,6 +103,7 @@ export default function AdminApp() {
   const handleLogout = () => {
     localStorage.removeItem('cms_token')
     localStorage.removeItem('supabase_token')
+    invalidateCache('users')
     setToken(null)
     setRole(null)
     setMustChangePassword(false)
@@ -76,6 +119,57 @@ export default function AdminApp() {
       setHistoricoAlunoId(v === 'historico_editor' && alunoId ? alunoId : null)
       setView(v)
     }
+  }
+
+  const toggleGroup = (g: string) => {
+    setOpenGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
+  }
+
+  const isSuperAdmin = role === ROLES.SUPER_ADMIN
+  const isEditorAdmin = role === ROLES.EDITOR_ADMIN
+  const isEditorBlog = role === ROLES.EDITOR_BLOG
+  const isGestorAdmin = role === ROLES.GESTOR_ADMIN
+  const isCoordenador = role === ROLES.COORDENADOR_PEDAGOGICO
+  const isSecretaria = role === ROLES.SECRETARIA_ESCOLAR
+  const isFinanceiro = role === ROLES.FINANCEIRO
+  const isProfessor = role === ROLES.PROFESSOR
+  const canManageUsers = isSuperAdmin || isGestorAdmin
+  const commBadge = unreadMessages + unreadPreEnrollments
+
+  const toggleSidebar = () => {
+    setCollapsed((c) => {
+      const next = !c
+      try { localStorage.setItem('admin_sidebar_collapsed', next ? '1' : '0') } catch { }
+      return next
+    })
+  }
+
+  const expandGroup = (g: string) => {
+    setOpenGroups((prev) => (prev.includes(g) ? prev : [...prev, g]))
+    setCollapsed(false)
+  }
+
+  const SidebarGroup = ({ title, group, badge, children }: { title: string; group: string; badge?: number; children: React.ReactNode }) => {
+    const open = openGroups.includes(group)
+    return (
+      <div className="sidebar-group">
+        <button
+          type="button"
+          className="sidebar-group-header"
+          onClick={() => toggleGroup(group)}
+          aria-expanded={open}
+        >
+          <span>{title}</span>
+          {badge !== undefined && badge > 0 && (
+            <span className="sidebar-group-badge-wrap">
+              <span className="sidebar-badge">{badge > 99 ? '99+' : badge}</span>
+            </span>
+          )}
+          <span className={`sidebar-chevron${open ? ' open' : ''}`}>▸</span>
+        </button>
+        {open && <div className="sidebar-group-items">{children}</div>}
+      </div>
+    )
   }
 
   // Auto-logout por inatividade (10 min)
@@ -205,6 +299,9 @@ export default function AdminApp() {
   }
 
   const renderView = () => {
+    if ((view === 'users' || view === 'supabase_users') && !canManageUsers) {
+      return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} unreadPreEnrollments={unreadPreEnrollments} role={role} />
+    }
     switch (view) {
       case 'dashboard':
         return <AdminDashboard onNavigate={handleNavigate} unreadMessages={unreadMessages} unreadPreEnrollments={unreadPreEnrollments} role={role} />
@@ -233,6 +330,26 @@ export default function AdminApp() {
         return <HistoricoAlunos onNavigate={handleNavigate} />
       case 'historico_editor':
         return <HistoricoEditor initialAlunoId={historicoAlunoId} />
+      case 'turmas':
+        return <TurmasManager />
+      case 'professores':
+        return <ProfessoresManager />
+      case 'disciplinas':
+        return <DisciplinasManager />
+      case 'matriculas':
+        return <MatriculasManager />
+      case 'notas':
+        return <NotasManager />
+      case 'frequencia':
+        return <FrequenciaManager />
+      case 'ocorrencias':
+        return <OcorrenciasManager />
+      case 'conselho_classe':
+        return <ConselhoClasseManager />
+      case 'anos_letivos':
+        return <AnosLetivosManager />
+      case 'grade_horaria':
+        return <GradeHorariaManager />
       case 'login_log':
         return <LoginLog />
       default:
@@ -242,61 +359,136 @@ export default function AdminApp() {
 
   return (
     <div className="admin-wrapper">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar${collapsed && isDesktop ? ' collapsed' : ''}`}>
         <h2>Olá {getUsernameFromToken() || 'Usuário'}</h2>
-        <nav>
-          <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</button>
-          {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN ? (
-            <button className={view === 'pages' ? 'active' : ''} onClick={() => setView('pages')}>Páginas</button>
-          ) : null}
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          onClick={toggleSidebar}
+          title={collapsed && isDesktop ? 'Expandir menu' : 'Encolher menu'}
+          aria-label={collapsed && isDesktop ? 'Expandir menu' : 'Encolher menu'}
+        >
+          {collapsed && isDesktop ? '»' : '«'}
+        </button>
+        {collapsed && isDesktop ? (
+          <nav>
+            {isSuperAdmin || isEditorAdmin || isEditorBlog || isGestorAdmin ? (
+              <button type="button" className={`sidebar-rail-btn${VIEW_GROUP[view] === 'conteudo' ? ' active' : ''}`} title="Conteúdo do Site" aria-label="Conteúdo do Site" onClick={() => expandGroup('conteudo')}>📄</button>
+            ) : null}
+            {isSuperAdmin || isGestorAdmin || isCoordenador || isSecretaria ? (
+              <button type="button" className={`sidebar-rail-btn${VIEW_GROUP[view] === 'comunicacao' ? ' active' : ''}`} title="Comunicação" aria-label="Comunicação" onClick={() => expandGroup('comunicacao')}>
+                <span className="sidebar-btn-icon">
+                  ✉️
+                  {commBadge > 0 && <span className="sidebar-badge">{commBadge > 99 ? '99+' : commBadge}</span>}
+                </span>
+              </button>
+            ) : null}
+            {isSuperAdmin || isGestorAdmin || isCoordenador || isSecretaria ? (
+              <button type="button" className={`sidebar-rail-btn${VIEW_GROUP[view] === 'cadastros' ? ' active' : ''}`} title="Cadastros" aria-label="Cadastros" onClick={() => expandGroup('cadastros')}>🏫</button>
+            ) : null}
+            {isSuperAdmin || isGestorAdmin || isCoordenador || isSecretaria || isFinanceiro || isProfessor ? (
+              <button type="button" className={`sidebar-rail-btn${VIEW_GROUP[view] === 'academico' ? ' active' : ''}`} title="Acadêmico" aria-label="Acadêmico" onClick={() => expandGroup('academico')}>🎓</button>
+            ) : null}
+            {canManageUsers ? (
+              <button type="button" className={`sidebar-rail-btn${VIEW_GROUP[view] === 'sistema' ? ' active' : ''}`} title="Sistema" aria-label="Sistema" onClick={() => expandGroup('sistema')}>⚙️</button>
+            ) : null}
+          </nav>
+        ) : (
+          <nav>
+            <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</button>
+
           {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN || role === ROLES.EDITOR_BLOG || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'section' && sectionTitle === 'Blog' ? 'active' : ''} onClick={() => handleNavigate('section', 'Blog')}>Blog</button>
+            <SidebarGroup title="Conteúdo do Site" group="conteudo">
+              {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN ? (
+                <button className={view === 'pages' ? 'active' : ''} onClick={() => setView('pages')}>Páginas</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN || role === ROLES.EDITOR_BLOG || role === ROLES.GESTOR_ADMIN ? (
+                <button className={view === 'section' && sectionTitle === 'Blog' ? 'active' : ''} onClick={() => handleNavigate('section', 'Blog')}>Blog</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN || role === ROLES.GESTOR_ADMIN ? (
+                <button className={view === 'images' ? 'active' : ''} onClick={() => setView('images')}>Imagens</button>
+              ) : null}
+            </SidebarGroup>
           ) : null}
-          {role === ROLES.SUPER_ADMIN || role === ROLES.EDITOR_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'images' ? 'active' : ''} onClick={() => setView('images')}>Imagens</button>
+
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.SECRETARIA_ESCOLAR ? (
+            <SidebarGroup title="Comunicação" group="comunicacao" badge={unreadMessages + unreadPreEnrollments}>
+              <button className={view === 'messages' ? 'active' : ''} onClick={() => setView('messages')}>
+                <span className="sidebar-btn-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  {unreadMessages > 0 && <span className="sidebar-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
+                </span>
+                Mensagens
+              </button>
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.SECRETARIA_ESCOLAR ? (
+                <button className={view === 'pre_enrollments' ? 'active' : ''} onClick={() => setView('pre_enrollments')}>
+                  <span className="sidebar-btn-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                    {unreadPreEnrollments > 0 && <span className="sidebar-badge">{unreadPreEnrollments > 99 ? '99+' : unreadPreEnrollments}</span>}
+                  </span>
+                  Pré-Matrícula
+                </button>
+              ) : null}
+            </SidebarGroup>
           ) : null}
-          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'messages' ? 'active' : ''} onClick={() => setView('messages')}>
-              <span className="sidebar-btn-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                {unreadMessages > 0 && <span className="sidebar-badge">{unreadMessages > 99 ? '99+' : unreadMessages}</span>}
-              </span>
-              Mensagens
-            </button>
+
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.SECRETARIA_ESCOLAR ? (
+            <SidebarGroup title="Cadastros" group="cadastros">
+              <button className={view === 'historico_alunos' ? 'active' : ''} onClick={() => setView('historico_alunos')}>Cadastro de Alunos</button>
+              <button className={view === 'historico_editor' ? 'active' : ''} onClick={() => setView('historico_editor')}>Histórico Escolar</button>
+              <button className={view === 'turmas' ? 'active' : ''} onClick={() => setView('turmas')}>Turmas</button>
+              <button className={view === 'professores' ? 'active' : ''} onClick={() => setView('professores')}>Professores</button>
+              <button className={view === 'disciplinas' ? 'active' : ''} onClick={() => setView('disciplinas')}>Disciplinas</button>
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO ? (
+                <button className={view === 'anos_letivos' ? 'active' : ''} onClick={() => setView('anos_letivos')}>Anos Letivos</button>
+              ) : null}
+            </SidebarGroup>
           ) : null}
-          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'pre_enrollments' ? 'active' : ''} onClick={() => setView('pre_enrollments')}>
-              <span className="sidebar-btn-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                {unreadPreEnrollments > 0 && <span className="sidebar-badge">{unreadPreEnrollments > 99 ? '99+' : unreadPreEnrollments}</span>}
-              </span>
-              Pré-Matrícula
-            </button>
+
+          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.SECRETARIA_ESCOLAR || role === ROLES.FINANCEIRO || role === ROLES.PROFESSOR ? (
+            <SidebarGroup title="Acadêmico" group="academico">
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.SECRETARIA_ESCOLAR || role === ROLES.FINANCEIRO ? (
+                <button className={view === 'matriculas' ? 'active' : ''} onClick={() => setView('matriculas')}>Matrículas</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.PROFESSOR ? (
+                <button className={view === 'notas' ? 'active' : ''} onClick={() => setView('notas')}>Notas e Boletim</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.PROFESSOR ? (
+                <button className={view === 'frequencia' ? 'active' : ''} onClick={() => setView('frequencia')}>Frequência</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.PROFESSOR ? (
+                <button className={view === 'ocorrencias' ? 'active' : ''} onClick={() => setView('ocorrencias')}>Ocorrências</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO ? (
+                <button className={view === 'conselho_classe' ? 'active' : ''} onClick={() => setView('conselho_classe')}>Conselho de Classe</button>
+              ) : null}
+              {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN || role === ROLES.COORDENADOR_PEDAGOGICO || role === ROLES.SECRETARIA_ESCOLAR || role === ROLES.PROFESSOR ? (
+                <button className={view === 'grade_horaria' ? 'active' : ''} onClick={() => setView('grade_horaria')}>Grade Horária</button>
+              ) : null}
+            </SidebarGroup>
           ) : null}
-          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'historico_alunos' ? 'active' : ''} onClick={() => setView('historico_alunos')}>Cadastro de Alunos</button>
+
+          {canManageUsers ? (
+            <SidebarGroup title="Sistema" group="sistema">
+              <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários (T.)</button>
+              <button className={view === 'supabase_users' ? 'active' : ''} onClick={() => setView('supabase_users')}>Usuários (Server S.)</button>
+              {isSuperAdmin ? (
+                <>
+                  <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>
+                  <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>Setup</button>
+                  <button className={view === 'login_log' ? 'active' : ''} onClick={() => setView('login_log')}>Log de Acesso</button>
+                </>
+              ) : null}
+            </SidebarGroup>
           ) : null}
-          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'historico_editor' ? 'active' : ''} onClick={() => setView('historico_editor')}>Histórico Escolar</button>
-          ) : null}
-          <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>Usuários (T.)</button>
-          {role === ROLES.SUPER_ADMIN || role === ROLES.GESTOR_ADMIN ? (
-            <button className={view === 'supabase_users' ? 'active' : ''} onClick={() => setView('supabase_users')}>Usuários (Server S.)</button>
-          ) : null}
-          {role === ROLES.SUPER_ADMIN ? (
-            <>
-              <button className={view === 'backups' ? 'active' : ''} onClick={() => setView('backups')}>Backups</button>
-              <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>Setup</button>
-              <button className={view === 'login_log' ? 'active' : ''} onClick={() => setView('login_log')}>Log de Acesso</button>
-            </>
-          ) : null}
-        </nav>
+          </nav>
+        )}
         <div className="admin-sidebar-bottom">
           <a href="/" target="_blank" rel="noopener noreferrer">Ver Site</a>
           <button onClick={handleLogout}>Sair</button>
@@ -317,6 +509,7 @@ export default function AdminApp() {
 }
 
 function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void }) {
+  const canDeleteMessages = getRoleFromToken() === ROLES.SUPER_ADMIN || getRoleFromToken() === ROLES.GESTOR_ADMIN
   const [messages, setMessages] = useState<any[]>(() => {
     const cached = getCachedMessagesSync()
     return cached || []
@@ -425,7 +618,7 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
                 <td>{m.message}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   {tab === 'inbox' && <button className="btn btn-sm" onClick={() => archiveMessage(m.id)}>Arquivar</button>}
-                  <button className="btn btn-sm btn-danger" onClick={() => deleteMessage(m.id)}>Excluir</button>
+                  {canDeleteMessages && <button className="btn btn-sm btn-danger" onClick={() => deleteMessage(m.id)}>Excluir</button>}
                 </td>
               </tr>
             ))}
@@ -476,7 +669,9 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
               {!selectedMessage.archived && (
                 <button className="btn btn-sm" onClick={() => archiveMessage(selectedMessage.id)}>Arquivar</button>
               )}
-              <button className="btn btn-sm btn-danger" onClick={() => deleteMessage(selectedMessage.id)}>Excluir</button>
+              {canDeleteMessages && (
+                <button className="btn btn-sm btn-danger" onClick={() => deleteMessage(selectedMessage.id)}>Excluir</button>
+              )}
             </div>
           </div>
         </div>
@@ -486,6 +681,7 @@ function MessagesList({ onUnreadChange }: { onUnreadChange?: (n: number) => void
 }
 
 function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) => void }) {
+  const canDeletePreEnrollments = getRoleFromToken() === ROLES.SUPER_ADMIN || getRoleFromToken() === ROLES.GESTOR_ADMIN
   function formatPhone(value: string): string {
     const digits = value.replace(/\D/g, '').slice(0, 11)
     if (digits.length <= 2) return `(${digits}`
@@ -796,7 +992,7 @@ function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) =
                   <td><span className={`source-badge ${src.cls}`}>{src.text}</span></td>
                   <td onClick={(e) => e.stopPropagation()}>
                     {tab === 'inbox' && <button className="btn btn-sm" onClick={() => archiveItem(m.id)}>Arquivar</button>}
-                    <button className="btn btn-sm btn-danger" onClick={() => deleteItem(m.id)}>Excluir</button>
+                    {canDeletePreEnrollments && <button className="btn btn-sm btn-danger" onClick={() => deleteItem(m.id)}>Excluir</button>}
                   </td>
                 </tr>
               )
@@ -882,7 +1078,9 @@ function PreEnrollmentsList({ onUnreadChange }: { onUnreadChange?: (n: number) =
               {!selected.archived && (
                 <button className="btn btn-sm" onClick={() => archiveItem(selected.id)}>Arquivar</button>
               )}
-              <button className="btn btn-sm btn-danger" onClick={() => deleteItem(selected.id)}>Excluir</button>
+              {canDeletePreEnrollments && (
+                <button className="btn btn-sm btn-danger" onClick={() => deleteItem(selected.id)}>Excluir</button>
+              )}
             </div>
           </div>
         </div>

@@ -1,15 +1,23 @@
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
+  GESTOR_ADMIN: 'gestor_admin',
+  COORDENADOR_PEDAGOGICO: 'coordenador_pedagogico',
+  SECRETARIA_ESCOLAR: 'secretaria_escolar',
+  FINANCEIRO: 'financeiro',
+  PROFESSOR: 'professor',
   EDITOR_ADMIN: 'editor_admin',
   EDITOR_BLOG: 'editor_blog',
-  GESTOR_ADMIN: 'gestor_admin',
 }
 
 export const ROLE_NAMES: Record<string, string> = {
   super_admin: 'Super Administrador',
+  gestor_admin: 'Gestor de Alunos',
+  coordenador_pedagogico: 'Coordenador Pedagógico',
+  secretaria_escolar: 'Secretaria Escolar',
+  financeiro: 'Tesouraria / Financeiro',
+  professor: 'Professor',
   editor_admin: 'Editor do Site',
   editor_blog: 'Editor do Blog',
-  gestor_admin: 'Gestor de Alunos',
 }
 
 export function getRoleFromToken(): string | null {

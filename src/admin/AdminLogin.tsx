@@ -52,14 +52,14 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
         {mode === 'login' ? (
           <>
             <p className="admin-login-sub" style={{ textAlign: 'center' }}>Faça login para acessar o sistema</p>
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleLogin} data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
               <div className="admin-field">
                 <label>Usuário</label>
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
+                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} name="username" autoComplete="username" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" required />
               </div>
               <div className="admin-field">
                 <label>Senha</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} name="password" autoComplete="current-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" required />
               </div>
               {error && <p className="admin-error">{error}</p>}
               <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>

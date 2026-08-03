@@ -19,6 +19,17 @@ export function createDb() {
 
 let _initPromise = null
 
+function parseSerieFromNome(text) {
+  const t = String(text || '')
+  let m = t.match(/(\d{1,2})\s*[º°]\s*Ano/i)
+  if (m) return `${m[1]}º ano`
+  m = t.match(/(\d{1,2})\s*[ªa]\s*s[eé]rie/i)
+  if (m) return `${m[1]}ª série`
+  m = t.match(/(\d{1,2})\s*[º°]/)
+  if (m) return `${m[1]}º`
+  return ''
+}
+
 export async function initDb(db) {
   console.log('[db.js] initDb called, _initPromise:', !!_initPromise)
   if (_initPromise) return _initPromise
@@ -388,6 +399,228 @@ export async function initDb(db) {
     }
   } catch (e) {
     console.error('[db.js] Migration V6 FAILED:', e.message)
+  }
+
+  // V7 migration: academic core (turmas, professores, disciplinas, enturmação,
+  // matrículas, notas, frequência, ocorrências, anos letivos, mensalidades)
+  try {
+    const v7Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v7'`)
+    if (v7Check.rows.length === 0) {
+      const v7Tables = [
+        `CREATE TABLE IF NOT EXISTS turmas (
+          id TEXT PRIMARY KEY, nome TEXT NOT NULL, serie TEXT DEFAULT '',
+          periodo TEXT DEFAULT '', sala TEXT DEFAULT '', ano_letivo TEXT DEFAULT '',
+          professor_responsavel_id TEXT DEFAULT '', status TEXT DEFAULT 'ativa',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS professores (
+          id TEXT PRIMARY KEY, nome TEXT NOT NULL, email TEXT DEFAULT '',
+          telefone TEXT DEFAULT '', cpf TEXT DEFAULT '', especialidade TEXT DEFAULT '',
+          status TEXT DEFAULT 'ativo',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS disciplinas (
+          id TEXT PRIMARY KEY, nome TEXT NOT NULL, abreviatura TEXT DEFAULT '',
+          carga_horaria TEXT DEFAULT '',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS turma_disciplinas (
+          id TEXT PRIMARY KEY, turma_id TEXT NOT NULL, disciplina_id TEXT NOT NULL,
+          professor_id TEXT DEFAULT '',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS aluno_turmas (
+          id TEXT PRIMARY KEY, aluno_id TEXT NOT NULL, turma_id TEXT NOT NULL,
+          ano_letivo TEXT DEFAULT '', status TEXT DEFAULT 'ativo',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS matriculas (
+          id TEXT PRIMARY KEY, aluno_id TEXT NOT NULL, turma_id TEXT DEFAULT '',
+          ano_letivo TEXT DEFAULT '', numero TEXT DEFAULT '', codigo_acesso TEXT DEFAULT '',
+          data_matricula TEXT DEFAULT '', status TEXT DEFAULT 'matriculado',
+          origem TEXT DEFAULT 'cliente',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS notas (
+          id TEXT PRIMARY KEY, aluno_id TEXT NOT NULL, disciplina_id TEXT NOT NULL,
+          turma_id TEXT DEFAULT '', ano_letivo TEXT DEFAULT '',
+          bimestre INTEGER DEFAULT 1, nota TEXT DEFAULT '', faltas INTEGER DEFAULT 0,
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS frequencia (
+          id TEXT PRIMARY KEY, aluno_id TEXT NOT NULL, turma_id TEXT NOT NULL,
+          data TEXT NOT NULL, disciplina_id TEXT DEFAULT '', status TEXT DEFAULT 'presente',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS ocorrencias (
+          id TEXT PRIMARY KEY, aluno_id TEXT NOT NULL, data TEXT DEFAULT (datetime('now')),
+          tipo TEXT DEFAULT '', descricao TEXT NOT NULL, responsavel_id TEXT DEFAULT '',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS anos_letivos (
+          id TEXT PRIMARY KEY, ano TEXT NOT NULL, inicio TEXT DEFAULT '', fim TEXT DEFAULT '',
+          status TEXT DEFAULT 'ativo',
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+        `CREATE TABLE IF NOT EXISTS mensalidades (
+          id TEXT PRIMARY KEY, aluno_id TEXT NOT NULL, matricula_id TEXT DEFAULT '',
+          descricao TEXT DEFAULT '', vencimento TEXT DEFAULT '', valor TEXT DEFAULT '',
+          status TEXT DEFAULT 'pendente', data_pagamento TEXT DEFAULT '',
+          forma_pagamento TEXT DEFAULT '', parcela INTEGER DEFAULT 0,
+          company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`,
+      ]
+      for (const sql of v7Tables) await db.execute(sql)
+      console.log('[db.js] V7 tables created')
+
+      const currentYear = String(new Date().getFullYear())
+      await db.execute({
+        sql: 'INSERT OR IGNORE INTO anos_letivos (id, ano, status, company_id) VALUES (?, ?, ?, ?)',
+        args: [currentYear, currentYear, 'ativo', 'default'],
+      })
+      console.log('[db.js] V7 ano letivo corrente seeded:', currentYear)
+
+      const discRows = await db.execute('SELECT disciplinas, company_id FROM alunos')
+      const discSeen = new Set()
+      for (const r of discRows.rows) {
+        const raw = String(r.disciplinas || '').trim()
+        if (!raw) continue
+        let names = []
+        try {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) names = parsed.map((d) => typeof d === 'string' ? d : (d && d.nome) || '').filter(Boolean)
+        } catch {
+          names = raw.split(',').map((s) => s.trim()).filter(Boolean)
+        }
+        const company = String(r.company_id || 'default')
+        for (const name of names) {
+          const key = name.toUpperCase() + '|' + company
+          if (discSeen.has(key)) continue
+          discSeen.add(key)
+          await db.execute({
+            sql: 'INSERT INTO disciplinas (id, nome, company_id) VALUES (?, ?, ?)',
+            args: [crypto.randomUUID(), name, company],
+          })
+        }
+      }
+      if (discSeen.size > 0) console.log('[db.js] V7 disciplinas seeded from legacy alunos:', discSeen.size)
+
+      const alRows = await db.execute('SELECT id, turma, turma_atual, ano_letivo_atual, company_id FROM alunos')
+      const turmaSeen = new Map()
+      let enturmados = 0
+      for (const r of alRows.rows) {
+        const alunoId = String(r.id)
+        const turmaText = String(r.turma || '').trim() || String(r.turma_atual || '').trim()
+        if (!turmaText) continue
+        const company = String(r.company_id || 'default')
+        const serie = String(r.ano_letivo_atual || '').trim() || parseSerieFromNome(turmaText)
+        const key = turmaText + '|' + company
+        if (!turmaSeen.has(key)) {
+          const tid = crypto.randomUUID()
+          await db.execute({
+            sql: 'INSERT INTO turmas (id, nome, serie, company_id) VALUES (?, ?, ?, ?)',
+            args: [tid, turmaText, serie, company],
+          })
+          turmaSeen.set(key, tid)
+        }
+        const turmaId = turmaSeen.get(key)
+        const exists = await db.execute({
+          sql: 'SELECT 1 FROM aluno_turmas WHERE aluno_id = ? AND turma_id = ? AND company_id = ?',
+          args: [alunoId, turmaId, company],
+        })
+        if (exists.rows.length === 0) {
+          await db.execute({
+            sql: 'INSERT INTO aluno_turmas (id, aluno_id, turma_id, company_id) VALUES (?, ?, ?, ?)',
+            args: [crypto.randomUUID(), alunoId, turmaId, company],
+          })
+          enturmados++
+        }
+      }
+      console.log('[db.js] V7 turmas seeded:', turmaSeen.size, 'enturmações:', enturmados)
+
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v7', '1')`)
+      console.log('[db.js] Migration V7 complete')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V7 FAILED:', e.message)
+  }
+
+  // V8 migration: conselho de classe (deliberações por aluno/turma/bimestre)
+  try {
+    const v8Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v8'`)
+    if (v8Check.rows.length === 0) {
+      await db.execute(`CREATE TABLE IF NOT EXISTS conselho_classe (
+        id TEXT PRIMARY KEY, turma_id TEXT NOT NULL, aluno_id TEXT NOT NULL,
+        ano_letivo TEXT DEFAULT '', bimestre INTEGER DEFAULT 0,
+        parecer TEXT DEFAULT '', observacao TEXT DEFAULT '',
+        company_id TEXT DEFAULT 'default', created_at TEXT DEFAULT (datetime('now')))`)
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v8', '1')`)
+      console.log('[db.js] Migration V8 complete (conselho_classe)')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V8 FAILED:', e.message)
+  }
+
+  // V9 migration: seed users for academic/school roles
+  try {
+    const v9Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v9'`)
+    if (v9Check.rows.length === 0) {
+      const roleUsers = [
+        { username: 'coordenador_pedagogico', password: 'coordenador123', role: 'coordenador_pedagogico', email: 'coordenador@colegiostjm.com.br' },
+        { username: 'secretaria_escolar', password: 'secretaria123', role: 'secretaria_escolar', email: 'secretaria@colegiostjm.com.br' },
+        { username: 'financeiro', password: 'financeiro123', role: 'financeiro', email: 'financeiro@colegiostjm.com.br' },
+        { username: 'professor', password: 'professor123', role: 'professor', email: 'professor@colegiostjm.com.br' },
+      ]
+      for (const u of roleUsers) {
+        const existing = await db.execute({ sql: 'SELECT id FROM users WHERE username = ?', args: [u.username] })
+        if (existing.rows.length === 0) {
+          const hash = await bcrypt.hash(u.password, 10)
+          await db.execute({
+            sql: 'INSERT INTO users (username, password_hash, role, email, company_id) VALUES (?, ?, ?, ?, ?)',
+            args: [u.username, hash, u.role, u.email, 'default'],
+          })
+          console.log('[db.js] V9 user created:', u.username, 'role:', u.role)
+        }
+      }
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v9', '1')`)
+      console.log('[db.js] Migration V9 complete (role users)')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V9 FAILED:', e.message)
+  }
+
+  // V10 migration: vínculo login ↔ cadastro de professor (users.professor_id)
+  try {
+    const v10Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v10'`)
+    if (v10Check.rows.length === 0) {
+      const usersInfo = await db.execute('PRAGMA table_info(users)')
+      const usersCols = usersInfo.rows.map((r) => r.name)
+      if (!usersCols.includes('professor_id')) {
+        await db.execute(`ALTER TABLE users ADD COLUMN professor_id TEXT DEFAULT ''`)
+        console.log('[db.js] professor_id column added to users')
+      }
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v10', '1')`)
+      console.log('[db.js] Migration V10 complete (professor_id)')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V10 FAILED:', e.message)
+  }
+
+  // V11 migration: grade horária semanal (horario_aulas) baseada nos vínculos
+  // existentes de turma_disciplinas (turma + disciplina + professor)
+  try {
+    const v11Check = await db.execute(`SELECT value FROM content WHERE key = '_migration_v11'`)
+    if (v11Check.rows.length === 0) {
+      await db.execute(`CREATE TABLE IF NOT EXISTS horario_aulas (
+        id TEXT PRIMARY KEY,
+        turma_disciplina_id TEXT NOT NULL,
+        turma_id TEXT NOT NULL,
+        disciplina_id TEXT NOT NULL,
+        professor_id TEXT DEFAULT '',
+        periodo TEXT DEFAULT '',
+        dia_semana INTEGER NOT NULL,
+        aula_num INTEGER NOT NULL,
+        ano_letivo TEXT DEFAULT '',
+        company_id TEXT DEFAULT 'default',
+        created_at TEXT DEFAULT (datetime('now')))`)
+      // Integridade: uma turma não pode ter duas aulas no mesmo slot;
+      // um professor não pode estar em duas turmas no mesmo slot do período.
+      await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_horario_turma_slot ON horario_aulas (company_id, turma_id, dia_semana, aula_num)`)
+      await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_horario_prof_slot ON horario_aulas (company_id, professor_id, periodo, dia_semana, aula_num)`)
+      await db.execute(`INSERT OR IGNORE INTO content (key, value) VALUES ('_migration_v11', '1')`)
+      console.log('[db.js] Migration V11 complete (horario_aulas)')
+    }
+  } catch (e) {
+    console.error('[db.js] Migration V11 FAILED:', e.message)
   }
 
   // Seed alunos fictícios (runs once regardless of migration status)

@@ -7,6 +7,7 @@ interface SupabaseUser {
   email: string
   role: string
   company_id?: string
+  professor_id?: string
   created_at: string
   last_sign_in_at?: string
   confirmed_at?: string
@@ -14,11 +15,13 @@ interface SupabaseUser {
 
 export default function SupabaseUserManager() {
   const [users, setUsers] = useState<SupabaseUser[]>([])
+  const [professores, setProfessores] = useState<{ id: string; nome: string }[]>([])
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newRole, setNewRole] = useState(ROLES.EDITOR_ADMIN)
+  const [newProfessorId, setNewProfessorId] = useState('')
   const [newCompanyId, setNewCompanyId] = useState('default')
-  const [editingUser, setEditingUser] = useState<{ id: string; email: string; role: string; company_id: string } | null>(null)
+  const [editingUser, setEditingUser] = useState<{ id: string; email: string; role: string; company_id: string; professor_id?: string } | null>(null)
   const [resetData, setResetData] = useState<{ id: string; email: string } | null>(null)
   const [tempPassword, setTempPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -29,6 +32,10 @@ export default function SupabaseUserManager() {
   const isSuperAdmin = getRoleFromToken() === ROLES.SUPER_ADMIN
 
   useEffect(() => { loadUsers() }, [])
+
+  useEffect(() => {
+    api.get('/professores').then(({ data }) => setProfessores(data)).catch(() => { })
+  }, [])
 
   const loadUsers = async () => {
     setError('')
@@ -53,10 +60,12 @@ export default function SupabaseUserManager() {
         password: newPassword,
         role: newRole,
         ...(isSuperAdmin ? { company_id: newCompanyId } : {}),
+        professor_id: newRole === ROLES.PROFESSOR && newProfessorId ? newProfessorId : undefined,
       })
       setNewEmail('')
       setNewPassword('')
       setNewRole(ROLES.EDITOR_ADMIN)
+      setNewProfessorId('')
       setNewCompanyId('default')
       setStatus('Usuário criado com sucesso no Supabase!')
       loadUsers()
@@ -65,9 +74,15 @@ export default function SupabaseUserManager() {
     }
   }
 
-  const saveUser = async (id: string, email: string, role: string, company_id: string) => {
+  const saveUser = async (id: string, email: string, role: string, company_id: string, professor_id?: string) => {
     try {
-      await api.put(`/admin/supabase-users/${id}`, { email, role, company_id })
+      const payload: Record<string, string> = { email, role, company_id }
+      if (role === ROLES.PROFESSOR) {
+        payload.professor_id = professor_id || ''
+      } else {
+        payload.professor_id = ''
+      }
+      await api.put(`/admin/supabase-users/${id}`, payload)
       setEditingUser(null)
       loadUsers()
     } catch (err: any) {
@@ -112,9 +127,11 @@ export default function SupabaseUserManager() {
     } catch { return d }
   }
 
-  const roleOptions = Object.entries(ROLE_NAMES).map(([value, label]) => (
-    <option key={value} value={value}>{label}</option>
-  ))
+  const roleOptions = Object.entries(ROLE_NAMES)
+    .filter(([value]) => isSuperAdmin || value !== ROLES.SUPER_ADMIN)
+    .map(([value, label]) => (
+      <option key={value} value={value}>{label}</option>
+    ))
 
   return (
     <div className="admin-users">
@@ -127,7 +144,7 @@ export default function SupabaseUserManager() {
         </div>
         <div className="admin-field">
           <label>Senha</label>
-          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="senha" />
+          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="senha" autoComplete="new-password" />
         </div>
         <div className="admin-field">
           <label>Função</label>
@@ -135,6 +152,15 @@ export default function SupabaseUserManager() {
             {roleOptions}
           </select>
         </div>
+        {newRole === ROLES.PROFESSOR && (
+          <div className="admin-field">
+            <label>Professor vinculado</label>
+            <select value={newProfessorId} onChange={(e) => setNewProfessorId(e.target.value)}>
+              <option value="">Nenhum</option>
+              {professores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+        )}
         {isSuperAdmin && (
           <div className="admin-field">
             <label>Empresa (company_id)</label>
@@ -155,6 +181,7 @@ export default function SupabaseUserManager() {
               <th>ID</th>
               <th>E-mail</th>
               <th>Função</th>
+              <th>Professor</th>
               <th>Empresa</th>
               <th>Criado em</th>
               <th>Último acesso</th>
@@ -189,6 +216,16 @@ export default function SupabaseUserManager() {
                     )}
                   </td>
                   <td>
+                    {isEditingThis && editingUser!.role === ROLES.PROFESSOR ? (
+                      <select value={editingUser!.professor_id || ''} onChange={(e) => setEditingUser({ ...editingUser!, professor_id: e.target.value })}>
+                        <option value="">Nenhum</option>
+                        {professores.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
+                    ) : (
+                      professores.find((p) => p.id === u.professor_id)?.nome || '-'
+                    )}
+                  </td>
+                  <td>
                     {isEditingThis && isSuperAdmin ? (
                       <input
                         type="text"
@@ -205,13 +242,13 @@ export default function SupabaseUserManager() {
                   <td>
                     {isEditingThis ? (
                       <>
-                        <button className="btn btn-sm" onClick={() => saveUser(u.id, editingUser!.email, editingUser!.role, editingUser!.company_id)}>Salvar</button>
+                        <button className="btn btn-sm" onClick={() => saveUser(u.id, editingUser!.email, editingUser!.role, editingUser!.company_id, editingUser!.professor_id)}>Salvar</button>
                         <button className="btn btn-sm btn-outline" onClick={() => setEditingUser(null)}>Cancelar</button>
                       </>
                     ) : (
                       <>
-                        <button className="btn btn-sm" onClick={() => setEditingUser({ id: u.id, email: u.email, role: u.role, company_id: u.company_id || 'default' })}>Editar</button>
-                        <button className="btn btn-sm" onClick={() => setResetData({ id: u.id, email: u.email })}>Resetar Senha</button>
+                        <button className="btn btn-sm" onClick={() => { setResetData(null); setEditingUser({ id: u.id, email: u.email, role: u.role, company_id: u.company_id || 'default', professor_id: u.professor_id || '' }) }}>Editar</button>
+                        <button className="btn btn-sm" onClick={() => { setEditingUser(null); setResetData({ id: u.id, email: u.email }) }}>Resetar Senha</button>
                         <button className="btn btn-sm btn-danger" onClick={() => deleteUser(u.id)}>Excluir</button>
                       </>
                     )}
@@ -227,7 +264,7 @@ export default function SupabaseUserManager() {
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(15,23,42,0.95)',
         }}>
           <div style={{
             background: '#fff', borderRadius: 12, padding: 32,
@@ -245,6 +282,7 @@ export default function SupabaseUserManager() {
                 onChange={(e) => setTempPassword(e.target.value)}
                 placeholder="mín. 4 caracteres"
                 minLength={4}
+                autoComplete="new-password"
               />
             </div>
             <div className="admin-field">
@@ -255,6 +293,7 @@ export default function SupabaseUserManager() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="repita a senha"
                 minLength={4}
+                autoComplete="new-password"
               />
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
