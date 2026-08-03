@@ -50,6 +50,7 @@ router.get('/', async (req, res) => {
     })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -112,6 +113,7 @@ router.post('/bulk', async (req, res) => {
     }
     res.json({ success: true, updated })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -171,6 +173,7 @@ router.get('/resumo/:alunoId', async (req, res) => {
       percentual_presenca: percentual,
     })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -203,6 +206,7 @@ router.delete('/:id', async (req, res) => {
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Registro not found' })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

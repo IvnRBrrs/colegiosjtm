@@ -37,6 +37,7 @@ router.get('/', async (req, res) => {
 
     res.json(Object.values(pageMap))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -80,6 +81,7 @@ router.get('/:slug', async (req, res) => {
       content,
     })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -124,6 +126,7 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR_ADM
     for (const stmt of statements) await req.db.execute(stmt)
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -164,6 +167,7 @@ router.put('/:slug', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITOR
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

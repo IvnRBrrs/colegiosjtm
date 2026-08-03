@@ -32,6 +32,7 @@ router.post('/setup', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req
 
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -68,6 +69,7 @@ router.post('/login', async (req, res) => {
 
     res.json({ token, role, company_id, mustChangePassword })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -130,6 +132,7 @@ router.get('/users', authMiddleware, async (req, res) => {
 
     res.json(merged)
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -192,6 +195,7 @@ router.post('/users', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.GESTO
 
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -370,6 +374,7 @@ router.put('/users/:id', authMiddleware, async (req, res) => {
     if (error) throw error
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -443,6 +448,7 @@ router.post('/users/:id/reset-password', authMiddleware, async (req, res) => {
     if (error) throw error
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -482,6 +488,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     const newToken = generateToken(req.user.username, user.role || null, user.company_id || 'default')
     res.json({ success: true, token: newToken })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -520,6 +527,7 @@ router.delete('/users/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -546,6 +554,7 @@ router.get('/login-log', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (
 
     res.json(enriched)
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -558,6 +567,7 @@ router.delete('/login-log/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN), 
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

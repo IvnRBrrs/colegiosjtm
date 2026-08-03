@@ -37,6 +37,7 @@ router.get('/select', authMiddleware, requireRole(...DROPDOWN_ROLES), async (req
     const result = await req.db.execute({ sql, args })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -75,6 +76,7 @@ router.get('/', async (req, res) => {
     const result = await req.db.execute({ sql, args })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -101,6 +103,7 @@ router.get('/:id', async (req, res) => {
       anexos: rowsToObjects(anexos.rows, anexos.columns),
     })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -128,6 +131,7 @@ router.post('/', async (req, res) => {
     })
     res.json({ success: true, id })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -155,6 +159,7 @@ router.put('/:id', async (req, res) => {
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -177,6 +182,7 @@ router.delete('/:id', async (req, res) => {
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -195,6 +201,7 @@ router.post('/:id/anexos', async (req, res) => {
     })
     res.json({ success: true, id })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -211,6 +218,7 @@ router.delete('/anexos/:anexoId', async (req, res) => {
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

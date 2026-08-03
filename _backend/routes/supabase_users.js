@@ -37,6 +37,7 @@ router.get('/', async (req, res) => {
 
     res.json(users)
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: err.message || 'Failed to list Supabase users' })
   }
 })
@@ -93,6 +94,7 @@ router.post('/', async (req, res) => {
     if (error) throw error
     res.json({ success: true, id: data.user.id })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: err.message || 'Failed to create Supabase user' })
   }
 })
@@ -162,6 +164,7 @@ router.put('/:id', async (req, res) => {
     if (error) throw error
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: err.message || 'Failed to update Supabase user' })
   }
 })
@@ -191,6 +194,7 @@ router.delete('/:id', async (req, res) => {
     if (error) throw error
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: err.message || 'Failed to delete Supabase user' })
   }
 })
@@ -219,6 +223,7 @@ router.post('/:id/reset-password', async (req, res) => {
     if (error) throw error
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: err.message || 'Failed to reset password' })
   }
 })

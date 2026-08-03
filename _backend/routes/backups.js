@@ -14,6 +14,7 @@ router.get('/:sectionKey', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async
     })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -39,6 +40,7 @@ router.post('/', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (req, res
 
     res.json({ success: true, version })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -74,6 +76,7 @@ router.post('/restore', authMiddleware, requireRole(ROLES.SUPER_ADMIN), async (r
 
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

@@ -65,6 +65,7 @@ router.get('/preload', authMiddleware, async (req, res) => {
       preEnrollments: rowsToObjects(preEnrollmentsResult.rows, preEnrollmentsResult.columns),
     })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

@@ -65,6 +65,7 @@ router.get('/posts', async (req, res) => {
       totalPages: Math.ceil(total / limit),
     })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -78,6 +79,7 @@ router.get('/posts/:id', async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Post not found' })
     res.json(rowsToObjects(result.rows, result.columns)[0])
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -118,6 +120,7 @@ router.post('/posts', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.EDITO
 
     res.json({ success: true, id, slug })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -168,6 +171,7 @@ router.put('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES.ED
 
     res.json({ success: true, slug })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -185,6 +189,7 @@ router.delete('/posts/:id', authMiddleware, requireRole(ROLES.SUPER_ADMIN, ROLES
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Post not found' })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -200,6 +205,7 @@ router.get('/tags', async (req, res) => {
     })
     res.json(Array.from(tagSet).sort())
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -209,6 +215,7 @@ router.get('/authors', async (req, res) => {
     const result = await req.db.execute("SELECT DISTINCT author FROM blog_posts WHERE author != '' ORDER BY author")
     res.json(result.rows.map((r) => r.author))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -221,6 +228,7 @@ router.get('/archive', async (req, res) => {
     `)
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

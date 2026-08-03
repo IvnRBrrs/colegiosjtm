@@ -142,6 +142,7 @@ router.get('/', authMiddleware, requireRole(...READ_ROLES), async (req, res) => 
     const result = await req.db.execute({ sql, args })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -158,6 +159,7 @@ router.get('/me', authMiddleware, requireRole(ROLES.PROFESSOR), async (req, res)
     })
     res.json(rowsToObjects(result.rows, result.columns))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -182,6 +184,7 @@ router.get('/:id', authMiddleware, requireRole(...READ_ROLES), async (req, res) 
     }
     res.json(row)
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -207,6 +210,7 @@ router.post('/', authMiddleware, requireRole(...WRITE_ROLES), async (req, res) =
     })
     res.json({ success: true, id })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -240,6 +244,7 @@ router.put('/:id', authMiddleware, requireRole(...WRITE_ROLES), async (req, res)
     })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -255,6 +260,7 @@ router.delete('/:id', authMiddleware, requireRole(...WRITE_ROLES), async (req, r
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Aula not found' })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
