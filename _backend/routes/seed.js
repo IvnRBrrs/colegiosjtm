@@ -46,6 +46,7 @@ router.post('/images', async (req, res) => {
 
     res.json({ message: 'Images seeded successfully', count: inserted })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -202,6 +203,7 @@ router.post('/content', async (req, res) => {
 
     res.json({ message: 'Content seeded successfully' })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

@@ -23,6 +23,7 @@ router.get('/initial', async (req, res) => {
       homeContent,
     })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })

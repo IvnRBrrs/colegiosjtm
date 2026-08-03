@@ -55,6 +55,7 @@ router.get('/', async (req, res) => {
     const rows = rowsToObjects(result.rows, result.columns)
     res.json(rows.map((o) => ({ ...o, can_edit: scope === null ? true : String(o.responsavel_id || '') === scope })))
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -85,6 +86,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json(row)
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -122,6 +124,7 @@ router.post('/', async (req, res) => {
     })
     res.json({ success: true, id })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -170,6 +173,7 @@ router.put('/:id', async (req, res) => {
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Ocorrencia not found' })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
@@ -200,6 +204,7 @@ router.delete('/:id', async (req, res) => {
     if (result.rowsAffected === 0) return res.status(404).json({ error: 'Ocorrencia not found' })
     res.json({ success: true })
   } catch (err) {
+    console.error(`[api 500] ${res.req.method} ${res.req.originalUrl}`, err)
     res.status(500).json({ error: String(err) })
   }
 })
